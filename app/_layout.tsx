@@ -43,6 +43,20 @@ export default function RootLayout() {
   );
 
   if (Platform.OS === 'web') {
+    // Check if on mobile browser (touch device)
+    const isMobileWeb = typeof window !== 'undefined' &&
+      ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+
+    if (isMobileWeb) {
+      // Full screen on mobile web - no phone frame
+      return (
+        <View style={styles.mobileWebContainer}>
+          {content}
+        </View>
+      );
+    }
+
+    // Desktop: show phone frame emulation
     return (
       <View style={styles.webWrapper}>
         <View style={styles.phoneFrame}>
@@ -66,6 +80,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.bg,
   },
+  mobileWebContainer: {
+    flex: 1,
+    backgroundColor: COLORS.bg,
+    width: '100%',
+    height: '100dvh', // Dynamic viewport height for mobile browsers
+    paddingTop: 'env(safe-area-inset-top)',
+    paddingBottom: 'env(safe-area-inset-bottom)',
+  } as any,
   webWrapper: {
     flex: 1,
     backgroundColor: '#000',
