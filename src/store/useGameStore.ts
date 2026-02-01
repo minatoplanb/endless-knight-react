@@ -238,14 +238,38 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   playerDie: () => {
+    const state = get();
+
+    // Set player as dead briefly
     set({
       player: {
-        ...get().player,
+        ...state.player,
         currentHp: 0,
       },
       isPlayerDead: true,
-      showDeathModal: true,
     });
+
+    // Auto-revive after 1 second - go back to previous stage (minimum stage 1)
+    setTimeout(() => {
+      const currentState = get();
+      const newStage = Math.max(1, currentState.stage.currentStage - 1);
+
+      set({
+        player: {
+          ...currentState.player,
+          currentHp: currentState.player.maxHp,
+        },
+        stage: {
+          ...currentState.stage,
+          currentStage: newStage,
+          enemiesKilled: 0,
+          travelProgress: 0,
+          isTraveling: true,
+        },
+        currentEnemy: null,
+        isPlayerDead: false,
+      });
+    }, 1000);
   },
 
   // Upgrades

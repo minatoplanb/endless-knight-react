@@ -3,7 +3,7 @@ import { View, Image, StyleSheet, Animated, ImageSourcePropType } from 'react-na
 import { scale } from '../../constants/theme';
 
 // Image imports
-const PLAYER_IMAGE = require('../../../assets/images/player/knight.png');
+const PLAYER_IMAGE = require('../../../assets/images/player/warrior.png');
 const ENEMY_IMAGES: { [key: string]: ImageSourcePropType } = {
   slime_green: require('../../../assets/images/enemies/slime_green.png'),
   slime_blue: require('../../../assets/images/enemies/slime_blue.png'),
@@ -34,7 +34,7 @@ interface CharacterSpriteProps {
 }
 
 export const CharacterSprite = React.memo<CharacterSpriteProps>(
-  ({ isPlayer = true, isHurt = false, isDead = false, size = scale(80), enemyType = 'slime_green' }) => {
+  ({ isPlayer = true, isHurt = false, isDead = false, size = scale(100), enemyType = 'slime_green' }) => {
     const opacityAnim = useRef(new Animated.Value(1)).current;
     const tintAnim = useRef(new Animated.Value(0)).current;
 
