@@ -105,7 +105,7 @@ export const BattleView = React.memo(() => {
         <View style={styles.battleArea}>
           {/* Player */}
           <View style={styles.characterContainer}>
-            <Text style={styles.characterLabel}>騎士</Text>
+            <Text style={styles.characterLabel}>戰士</Text>
             <CharacterSprite
               isPlayer={true}
               isHurt={playerHurt}
