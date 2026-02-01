@@ -1,32 +1,56 @@
 import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet, Animated } from 'react-native';
-import { COLORS, scale } from '../../constants/theme';
+import { View, Image, StyleSheet, Animated, ImageSourcePropType } from 'react-native';
+import { scale } from '../../constants/theme';
+
+// Image imports
+const PLAYER_IMAGE = require('../../../assets/images/player/knight.png');
+const ENEMY_IMAGES: { [key: string]: ImageSourcePropType } = {
+  slime_green: require('../../../assets/images/enemies/slime_green.png'),
+  slime_blue: require('../../../assets/images/enemies/slime_blue.png'),
+  slime_red: require('../../../assets/images/enemies/slime_red.png'),
+  goblin: require('../../../assets/images/enemies/goblin.png'),
+  skeleton: require('../../../assets/images/enemies/skeleton.png'),
+  skeleton_red: require('../../../assets/images/enemies/skeleton_red.png'),
+  skeleton_gold: require('../../../assets/images/enemies/skeleton_gold.png'),
+  zombie: require('../../../assets/images/enemies/zombie.png'),
+  orc: require('../../../assets/images/enemies/orc.png'),
+  bat: require('../../../assets/images/enemies/bat.png'),
+  rat: require('../../../assets/images/enemies/rat.png'),
+  mushroom: require('../../../assets/images/enemies/mushroom.png'),
+  mimic: require('../../../assets/images/enemies/mimic.png'),
+};
+
+// Get enemy image based on type
+export const getEnemyImage = (enemyType: string): ImageSourcePropType => {
+  return ENEMY_IMAGES[enemyType] || ENEMY_IMAGES.slime_green;
+};
 
 interface CharacterSpriteProps {
   isPlayer?: boolean;
   isHurt?: boolean;
   isDead?: boolean;
   size?: number;
+  enemyType?: string;
 }
 
 export const CharacterSprite = React.memo<CharacterSpriteProps>(
-  ({ isPlayer = true, isHurt = false, isDead = false, size = scale(80) }) => {
+  ({ isPlayer = true, isHurt = false, isDead = false, size = scale(80), enemyType = 'slime_green' }) => {
     const opacityAnim = useRef(new Animated.Value(1)).current;
-    const hurtAnim = useRef(new Animated.Value(0)).current;
+    const tintAnim = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
       if (isHurt) {
-        // Flash red when hurt
+        // Flash when hurt
         Animated.sequence([
-          Animated.timing(hurtAnim, {
+          Animated.timing(tintAnim, {
             toValue: 1,
             duration: 100,
-            useNativeDriver: false,
+            useNativeDriver: true,
           }),
-          Animated.timing(hurtAnim, {
+          Animated.timing(tintAnim, {
             toValue: 0,
             duration: 100,
-            useNativeDriver: false,
+            useNativeDriver: true,
           }),
         ]).start();
       }
@@ -45,10 +69,7 @@ export const CharacterSprite = React.memo<CharacterSpriteProps>(
       }
     }, [isDead]);
 
-    const backgroundColor = hurtAnim.interpolate({
-      inputRange: [0, 1],
-      outputRange: [isPlayer ? COLORS.buttonPrimary : COLORS.buttonDanger, COLORS.damage],
-    });
+    const imageSource = isPlayer ? PLAYER_IMAGE : getEnemyImage(enemyType);
 
     return (
       <Animated.View
@@ -61,31 +82,31 @@ export const CharacterSprite = React.memo<CharacterSpriteProps>(
           },
         ]}
       >
-        <Animated.View
+        <Image
+          source={imageSource}
           style={[
             styles.sprite,
             {
-              backgroundColor,
               width: size,
               height: size,
             },
           ]}
-        >
-          <View style={[styles.face, { top: size * 0.2 }]}>
-            <View style={[styles.eye, { marginRight: size * 0.15 }]} />
-            <View style={styles.eye} />
-          </View>
-          <View
-            style={[
-              styles.mouth,
-              {
-                top: size * 0.55,
-                width: size * 0.3,
-                height: size * 0.1,
-              },
-            ]}
-          />
-        </Animated.View>
+          resizeMode="contain"
+        />
+        {/* Hurt overlay */}
+        <Animated.View
+          style={[
+            styles.hurtOverlay,
+            {
+              width: size,
+              height: size,
+              opacity: tintAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0, 0.5],
+              }),
+            },
+          ]}
+        />
       </Animated.View>
     );
   }
@@ -95,27 +116,14 @@ const styles = StyleSheet.create({
   container: {
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  sprite: {
-    borderRadius: scale(8),
-    justifyContent: 'center',
-    alignItems: 'center',
     position: 'relative',
   },
-  face: {
-    position: 'absolute',
-    flexDirection: 'row',
-    justifyContent: 'center',
+  sprite: {
+    // Image styles
   },
-  eye: {
-    width: scale(10),
-    height: scale(10),
-    backgroundColor: COLORS.text,
-    borderRadius: scale(5),
-  },
-  mouth: {
+  hurtOverlay: {
     position: 'absolute',
-    backgroundColor: COLORS.bg,
-    borderRadius: scale(4),
+    backgroundColor: '#ff0000',
+    borderRadius: scale(8),
   },
 });
