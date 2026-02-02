@@ -25,6 +25,10 @@ export const getEnemyImage = (enemyType: string): ImageSourcePropType => {
   return ENEMY_IMAGES[enemyType] || ENEMY_IMAGES.slime_green;
 };
 
+// Sprites that are ALREADY facing left (don't need to be flipped)
+// Most sprites face right and need flipping to face left
+const SPRITES_FACING_LEFT = ['rat', 'bat', 'mushroom'];
+
 interface CharacterSpriteProps {
   isPlayer?: boolean;
   isHurt?: boolean;
@@ -75,8 +79,9 @@ export const CharacterSprite = React.memo<CharacterSpriteProps>(
     const imageSource = isPlayer ? PLAYER_IMAGE : getEnemyImage(enemyType);
 
     // Player faces RIGHT (→) - original sprite already faces right, no flip needed
-    // Enemies face LEFT (←) - original sprites face right, need to flip
-    const shouldFlip = !isPlayer; // Only flip enemies
+    // Enemies face LEFT (←) - most sprites face right and need flipping
+    // Exception: some sprites already face left, don't flip those
+    const shouldFlip = !isPlayer && !SPRITES_FACING_LEFT.includes(enemyType);
 
     return (
       <Animated.View

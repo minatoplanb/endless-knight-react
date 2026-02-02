@@ -99,7 +99,7 @@ export const AREAS: Area[] = [
     id: 'dark_forest',
     name: '陰暗森林',
     description: '茂密的樹林遮蔽了陽光，危險的生物潛伏其中。',
-    background: 'dark_forest',
+    background: 'forest_autumn',
     requiredLevel: 20,
     stages: 15,
     enemies: [
