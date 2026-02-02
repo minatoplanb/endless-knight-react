@@ -9,7 +9,7 @@
 | 設定 | 值 |
 |------|---|
 | 語言 | **繁體中文**（Claude 回覆一律用繁體中文，程式碼和註解用英文）|
-| 版本 | v0.6.0 |
+| 版本 | v0.7.0 |
 | 框架 | React Native + Expo SDK 52 |
 | 狀態管理 | Zustand |
 | 存檔 | @react-native-async-storage/async-storage |
@@ -446,9 +446,10 @@ Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 - [x] 區域系統 (3 個區域、敵人池、區域選擇器)
 - [x] 採集系統 (4 工人、4 資源、背景採集、離線獎勵)
 - [x] 戰鬥風格系統 (近戰/遠程/魔法 三角形)
+- [x] 製作系統 (鍛造/製箭/烹飪/煉金)
+- [x] 消耗品系統 (食物/藥水/Buff)
 
 ### 🔲 待完成
-- [ ] 製作系統
 - [ ] 技能系統
 - [ ] 轉生系統
 - [ ] Boss 戰

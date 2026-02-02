@@ -12,6 +12,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { route: '/', label: '戰鬥', icon: '⚔️' },
   { route: '/gathering', label: '採集', icon: '⛏️' },
+  { route: '/crafting', label: '製作', icon: '🔨' },
   { route: '/equipment', label: '裝備', icon: '🛡️' },
 ];
 

@@ -18,11 +18,22 @@ import {
   GatheringState,
   ResourceType,
   CombatStyle,
+  ConsumableStack,
+  ActiveBuff,
+  BuffType,
 } from '../types';
 import {
   getCombatMultiplier,
   getDefenseMultiplier,
 } from '../data/combatStyles';
+import {
+  getRecipeById,
+  canAffordRecipe,
+} from '../data/crafting';
+import {
+  getConsumableById,
+  CONSUMABLES,
+} from '../data/consumables';
 import {
   AREAS,
   getAreaById,
@@ -173,6 +184,9 @@ const initialState: GameState = {
   },
   // Gathering system
   gathering: createDefaultGatheringState(),
+  // Consumables system
+  consumables: [],
+  activeBuffs: [],
   damagePopups: [],
   isPlayerDead: false,
   showDeathModal: false,
@@ -195,6 +209,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     // Always tick gathering (even when dead)
     get().tickGathering();
+
+    // Always tick buffs
+    get().tickBuffs();
 
     if (state.isPlayerDead) return;
 
@@ -270,11 +287,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const state = get();
     if (!state.currentEnemy || state.isPlayerDead) return;
 
-    const attackChance = state.player.attackSpeed * (TICK_INTERVAL / 1000);
+    // Apply attack speed buff
+    const speedBuff = get().getBuffMultiplier('attackSpeed');
+    const attackChance = state.player.attackSpeed * speedBuff * (TICK_INTERVAL / 1000);
     if (Math.random() > attackChance) return;
 
+    // Apply ATK buff
+    const atkBuff = get().getBuffMultiplier('atk');
+    const buffedAtk = Math.floor(state.player.atk * atkBuff);
+
     const isCrit = Math.random() < state.player.critChance;
-    let baseDamage = Math.max(1, state.player.atk - Math.floor(state.currentEnemy.atk * 0.1));
+    let baseDamage = Math.max(1, buffedAtk - Math.floor(state.currentEnemy.atk * 0.1));
 
     // Apply combat style multiplier
     const styleMultiplier = getCombatMultiplier(state.combatStyle, state.currentEnemy.combatStyle);
@@ -311,7 +334,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const attackChance = 1 * (TICK_INTERVAL / 1000); // Enemy attacks once per second
     if (Math.random() > attackChance) return;
 
-    let baseDamage = Math.max(1, state.currentEnemy.atk - state.player.def);
+    // Apply DEF buff
+    const defBuff = get().getBuffMultiplier('def');
+    const buffedDef = Math.floor(state.player.def * defBuff);
+
+    let baseDamage = Math.max(1, state.currentEnemy.atk - buffedDef);
 
     // Apply combat style defense multiplier (player takes more damage if at disadvantage)
     const defenseMultiplier = getDefenseMultiplier(state.combatStyle, state.currentEnemy.combatStyle);
@@ -878,11 +905,151 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set({ offlineGathering: null });
   },
 
+  // Crafting System
+  craftItem: (recipeId: string) => {
+    const state = get();
+    const recipe = getRecipeById(recipeId);
+    if (!recipe) return false;
+
+    // Check if can afford
+    if (!canAffordRecipe(recipe, state.gathering.resources, state.gold)) {
+      return false;
+    }
+
+    // Deduct resources
+    const newResources = { ...state.gathering.resources };
+    for (const [resource, amount] of Object.entries(recipe.costs)) {
+      newResources[resource as ResourceType] -= amount!;
+    }
+
+    // Deduct gold
+    const newGold = state.gold - (recipe.goldCost || 0);
+
+    // Add crafted item
+    if (recipe.itemType === 'consumable') {
+      // Add to consumables
+      get().addConsumable(recipe.outputId, recipe.outputAmount);
+    }
+    // TODO: Handle equipment crafting (add to inventory)
+
+    set({
+      gold: newGold,
+      gathering: {
+        ...state.gathering,
+        resources: newResources,
+      },
+    });
+
+    return true;
+  },
+
+  // Consumables System
+  addConsumable: (consumableId: string, amount: number) => {
+    const state = get();
+    const consumable = getConsumableById(consumableId);
+    if (!consumable) return;
+
+    const newConsumables = [...state.consumables];
+    const existingIndex = newConsumables.findIndex((c) => c.consumableId === consumableId);
+
+    if (existingIndex >= 0) {
+      // Add to existing stack
+      const newAmount = Math.min(
+        newConsumables[existingIndex].amount + amount,
+        consumable.maxStack
+      );
+      newConsumables[existingIndex] = {
+        ...newConsumables[existingIndex],
+        amount: newAmount,
+      };
+    } else {
+      // Create new stack
+      newConsumables.push({
+        consumableId,
+        amount: Math.min(amount, consumable.maxStack),
+      });
+    }
+
+    set({ consumables: newConsumables });
+  },
+
+  useConsumable: (consumableId: string) => {
+    const state = get();
+    const consumable = getConsumableById(consumableId);
+    if (!consumable) return false;
+
+    // Find stack
+    const stackIndex = state.consumables.findIndex((c) => c.consumableId === consumableId);
+    if (stackIndex < 0 || state.consumables[stackIndex].amount <= 0) {
+      return false;
+    }
+
+    // Apply effect
+    const effect = consumable.effect;
+    if (effect.type === 'heal') {
+      const newHp = Math.min(
+        state.player.maxHp,
+        state.player.currentHp + effect.amount
+      );
+      set({
+        player: {
+          ...state.player,
+          currentHp: newHp,
+        },
+      });
+    } else if (effect.type === 'buff') {
+      const newBuff: ActiveBuff = {
+        id: generateId(),
+        buffType: effect.buffType,
+        multiplier: effect.multiplier,
+        expiresAt: Date.now() + effect.duration,
+        sourceId: consumableId,
+      };
+
+      // Remove existing buff of same type and add new one
+      const newBuffs = state.activeBuffs.filter(
+        (b) => b.buffType !== effect.buffType
+      );
+      newBuffs.push(newBuff);
+      set({ activeBuffs: newBuffs });
+    }
+
+    // Reduce stack
+    const newConsumables = [...state.consumables];
+    newConsumables[stackIndex] = {
+      ...newConsumables[stackIndex],
+      amount: newConsumables[stackIndex].amount - 1,
+    };
+
+    // Remove empty stacks
+    const filteredConsumables = newConsumables.filter((c) => c.amount > 0);
+    set({ consumables: filteredConsumables });
+
+    return true;
+  },
+
+  tickBuffs: () => {
+    const state = get();
+    const now = Date.now();
+    const expiredBuffs = state.activeBuffs.filter((b) => b.expiresAt <= now);
+
+    if (expiredBuffs.length > 0) {
+      const newBuffs = state.activeBuffs.filter((b) => b.expiresAt > now);
+      set({ activeBuffs: newBuffs });
+    }
+  },
+
+  getBuffMultiplier: (buffType: BuffType) => {
+    const state = get();
+    const buff = state.activeBuffs.find((b) => b.buffType === buffType);
+    return buff ? buff.multiplier : 1.0;
+  },
+
   // Save/Load
   saveGame: async () => {
     const state = get();
     const saveData: SaveData = {
-      version: '0.6.0',
+      version: '0.7.0',
       player: state.player,
       upgrades: state.upgrades,
       gold: state.gold,
@@ -896,6 +1063,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       areaProgress: state.areaProgress,
       gathering: state.gathering,
       combatStyle: state.combatStyle,
+      consumables: state.consumables,
+      activeBuffs: state.activeBuffs,
     };
 
     try {
@@ -950,6 +1119,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
         unlockedAreas: savedUnlockedAreas,
         areaProgress: savedAreaProgress,
         gathering: savedGathering,
+        consumables: data.consumables || [],
+        activeBuffs: data.activeBuffs || [],
       });
 
       get().calculateOfflineReward();

@@ -7,6 +7,23 @@ export type CombatStyle = 'melee' | 'ranged' | 'magic';
 export type ResourceType = 'ore' | 'wood' | 'fish' | 'herb';
 export type WorkerType = 'miner' | 'lumberjack' | 'fisher' | 'gatherer';
 
+// Consumables System Types
+export type ConsumableType = 'food' | 'potion';
+export type BuffType = 'atk' | 'def' | 'attackSpeed' | 'critChance';
+
+export interface ConsumableStack {
+  consumableId: string;
+  amount: number;
+}
+
+export interface ActiveBuff {
+  id: string;
+  buffType: BuffType;
+  multiplier: number;
+  expiresAt: number;
+  sourceId: string;
+}
+
 export interface Worker {
   type: WorkerType;
   level: number;
@@ -158,6 +175,10 @@ export interface GameState {
   // Gathering System
   gathering: GatheringState;
 
+  // Consumables System
+  consumables: ConsumableStack[];
+  activeBuffs: ActiveBuff[];
+
   // UI State
   damagePopups: DamagePopup[];
   isPlayerDead: boolean;
@@ -227,6 +248,15 @@ export interface GameActions {
   collectOfflineGathering: () => void;
   dismissOfflineGathering: () => void;
 
+  // Crafting System
+  craftItem: (recipeId: string) => boolean;
+
+  // Consumables System
+  addConsumable: (consumableId: string, amount: number) => void;
+  useConsumable: (consumableId: string) => boolean;
+  tickBuffs: () => void;
+  getBuffMultiplier: (buffType: BuffType) => number;
+
   // Damage popups
   addDamagePopup: (popup: Omit<DamagePopup, 'id' | 'timestamp'>) => void;
   removeDamagePopup: (id: string) => void;
@@ -263,4 +293,7 @@ export interface SaveData {
   gathering?: GatheringState;
   // Combat style (added in v0.6.0)
   combatStyle?: CombatStyle;
+  // Consumables (added in v0.7.0)
+  consumables?: ConsumableStack[];
+  activeBuffs?: ActiveBuff[];
 }
