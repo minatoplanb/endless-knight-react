@@ -1,8 +1,8 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useGameStore } from '../src/store/useGameStore';
 import { COLORS, SPACING, FONT_SIZES, scale } from '../src/constants/theme';
+import { TopBar } from '../src/components/ui/TopBar';
 import { getQuestById, QuestDefinition } from '../src/data/quests';
 import { ActiveQuestData, ResourceType } from '../src/types';
 
@@ -11,6 +11,33 @@ const RESOURCE_NAMES: Record<ResourceType, string> = {
   wood: '木材',
   fish: '魚獲',
   herb: '草藥',
+};
+
+// Get time until next daily reset (midnight UTC)
+const getTimeUntilDailyReset = (): string => {
+  const now = new Date();
+  const tomorrow = new Date(now);
+  tomorrow.setUTCHours(24, 0, 0, 0);
+  const diff = tomorrow.getTime() - now.getTime();
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  return `${hours}時 ${minutes}分`;
+};
+
+// Get time until next weekly reset (Monday midnight UTC)
+const getTimeUntilWeeklyReset = (): string => {
+  const now = new Date();
+  const daysUntilMonday = (8 - now.getUTCDay()) % 7 || 7;
+  const nextMonday = new Date(now);
+  nextMonday.setUTCDate(now.getUTCDate() + daysUntilMonday);
+  nextMonday.setUTCHours(0, 0, 0, 0);
+  const diff = nextMonday.getTime() - now.getTime();
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  if (days > 0) {
+    return `${days}天 ${hours}時`;
+  }
+  return `${hours}時`;
 };
 
 interface QuestCardProps {
@@ -94,11 +121,22 @@ export default function QuestsScreen() {
   const quests = useGameStore((state) => state.quests);
   const checkQuestReset = useGameStore((state) => state.checkQuestReset);
   const claimQuestReward = useGameStore((state) => state.claimQuestReward);
+  const [dailyReset, setDailyReset] = useState(getTimeUntilDailyReset());
+  const [weeklyReset, setWeeklyReset] = useState(getTimeUntilWeeklyReset());
 
   // Check for quest reset when entering the page
   useEffect(() => {
     checkQuestReset();
   }, [checkQuestReset]);
+
+  // Update reset times every minute
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setDailyReset(getTimeUntilDailyReset());
+      setWeeklyReset(getTimeUntilWeeklyReset());
+    }, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleClaimDaily = useCallback((questId: string) => {
     claimQuestReward(questId, true);
@@ -121,12 +159,18 @@ export default function QuestsScreen() {
   const weeklyCompleted = quests.weeklyQuests.filter((q) => q.claimed).length;
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <View style={styles.container}>
+      <TopBar />
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+        <Text style={styles.pageTitle}>📋 任務</Text>
+
         {/* Daily Quests Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>每日任務</Text>
+            <View style={styles.sectionTitleContainer}>
+              <Text style={styles.sectionTitle}>每日任務</Text>
+              <Text style={styles.resetTime}>重置：{dailyReset}</Text>
+            </View>
             <Text style={styles.sectionProgress}>
               {dailyCompleted}/{quests.dailyQuests.length}
             </Text>
@@ -148,7 +192,10 @@ export default function QuestsScreen() {
         {/* Weekly Quests Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>每週任務</Text>
+            <View style={styles.sectionTitleContainer}>
+              <Text style={styles.sectionTitle}>每週任務</Text>
+              <Text style={styles.resetTime}>重置：{weeklyReset}</Text>
+            </View>
             <Text style={styles.sectionProgress}>
               {weeklyCompleted}/{quests.weeklyQuests.length}
             </Text>
@@ -167,7 +214,7 @@ export default function QuestsScreen() {
           )}
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -183,6 +230,13 @@ const styles = StyleSheet.create({
     padding: SPACING.md,
     paddingBottom: SPACING.xxl,
   },
+  pageTitle: {
+    fontSize: FONT_SIZES.xl,
+    fontWeight: 'bold',
+    color: COLORS.text,
+    textAlign: 'center',
+    marginBottom: SPACING.lg,
+  },
   section: {
     marginBottom: SPACING.xl,
   },
@@ -192,10 +246,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: SPACING.md,
   },
+  sectionTitleContainer: {
+    flex: 1,
+  },
   sectionTitle: {
-    fontSize: FONT_SIZES.xl,
+    fontSize: FONT_SIZES.lg,
     fontWeight: 'bold',
-    color: COLORS.text,
+    color: COLORS.textGold,
+  },
+  resetTime: {
+    fontSize: FONT_SIZES.xs,
+    color: COLORS.textDim,
+    marginTop: SPACING.xs,
   },
   sectionProgress: {
     fontSize: FONT_SIZES.md,
