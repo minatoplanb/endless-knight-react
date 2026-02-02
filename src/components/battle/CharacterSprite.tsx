@@ -27,7 +27,7 @@ export const getEnemyImage = (enemyType: string): ImageSourcePropType => {
 
 // Sprites that are ALREADY facing left (don't need to be flipped)
 // Most sprites face right and need flipping to face left
-const SPRITES_FACING_LEFT = ['rat', 'bat', 'mushroom'];
+const SPRITES_FACING_LEFT = ['rat', 'mushroom'];
 
 interface CharacterSpriteProps {
   isPlayer?: boolean;
