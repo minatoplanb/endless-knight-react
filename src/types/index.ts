@@ -104,8 +104,12 @@ export interface Enemy {
   maxHp: number;
   currentHp: number;
   atk: number;
+  def: number;
   goldDrop: number;
   combatStyle: CombatStyle;
+  isBoss: boolean;
+  bossTitle?: string;
+  sprite: string;
 }
 
 export interface StageProgress {

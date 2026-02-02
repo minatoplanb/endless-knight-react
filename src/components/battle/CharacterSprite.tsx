@@ -31,10 +31,13 @@ interface CharacterSpriteProps {
   isDead?: boolean;
   size?: number;
   enemyType?: string;
+  isBoss?: boolean;
 }
 
 export const CharacterSprite = React.memo<CharacterSpriteProps>(
-  ({ isPlayer = true, isHurt = false, isDead = false, size = scale(100), enemyType = 'slime_green' }) => {
+  ({ isPlayer = true, isHurt = false, isDead = false, size = scale(100), enemyType = 'slime_green', isBoss = false }) => {
+    // Bosses are 50% larger
+    const actualSize = isBoss ? size * 1.5 : size;
     const opacityAnim = useRef(new Animated.Value(1)).current;
     const tintAnim = useRef(new Animated.Value(0)).current;
 
@@ -76,10 +79,11 @@ export const CharacterSprite = React.memo<CharacterSpriteProps>(
         style={[
           styles.container,
           {
-            width: size,
-            height: size,
+            width: actualSize,
+            height: actualSize,
             opacity: opacityAnim,
           },
+          isBoss && styles.bossContainer,
         ]}
       >
         <Image
@@ -87,8 +91,8 @@ export const CharacterSprite = React.memo<CharacterSpriteProps>(
           style={[
             styles.sprite,
             {
-              width: size,
-              height: size,
+              width: actualSize,
+              height: actualSize,
             },
           ]}
           resizeMode="contain"
@@ -98,8 +102,8 @@ export const CharacterSprite = React.memo<CharacterSpriteProps>(
           style={[
             styles.hurtOverlay,
             {
-              width: size,
-              height: size,
+              width: actualSize,
+              height: actualSize,
               opacity: tintAnim.interpolate({
                 inputRange: [0, 1],
                 outputRange: [0, 0.5],
@@ -107,6 +111,10 @@ export const CharacterSprite = React.memo<CharacterSpriteProps>(
             },
           ]}
         />
+        {/* Boss glow effect */}
+        {isBoss && (
+          <View style={[styles.bossGlow, { width: actualSize + 20, height: actualSize + 20 }]} />
+        )}
       </Animated.View>
     );
   }
@@ -118,6 +126,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     position: 'relative',
   },
+  bossContainer: {
+    // Boss has a subtle shadow effect
+  },
   sprite: {
     // Image styles
   },
@@ -125,5 +136,11 @@ const styles = StyleSheet.create({
     position: 'absolute',
     backgroundColor: '#ff0000',
     borderRadius: scale(8),
+  },
+  bossGlow: {
+    position: 'absolute',
+    backgroundColor: 'rgba(255, 215, 0, 0.2)',
+    borderRadius: scale(50),
+    zIndex: -1,
   },
 });

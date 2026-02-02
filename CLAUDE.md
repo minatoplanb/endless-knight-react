@@ -9,7 +9,7 @@
 | 設定 | 值 |
 |------|---|
 | 語言 | **繁體中文**（Claude 回覆一律用繁體中文，程式碼和註解用英文）|
-| 版本 | v0.8.0 |
+| 版本 | v0.9.0 |
 | 框架 | React Native + Expo SDK 52 |
 | 狀態管理 | Zustand |
 | 存檔 | @react-native-async-storage/async-storage |
@@ -449,11 +449,10 @@ Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 - [x] 製作系統 (鍛造/製箭/烹飪/煉金)
 - [x] 消耗品系統 (食物/藥水/Buff)
 - [x] 轉生系統 (轉生點數、永久升級)
+- [x] Boss 戰 (區域 Boss、特殊 UI、保證掉落)
 
 ### 🔲 待完成
 - [ ] 技能系統
-- [ ] 轉生系統
-- [ ] Boss 戰
 - [ ] AdMob 廣告
 - [ ] IAP 內購
 - [ ] Google Play 上架

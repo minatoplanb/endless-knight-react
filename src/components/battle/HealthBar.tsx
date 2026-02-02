@@ -8,13 +8,20 @@ interface HealthBarProps {
   width?: number;
   height?: number;
   showText?: boolean;
+  isBoss?: boolean;
 }
 
 export const HealthBar = React.memo<HealthBarProps>(
-  ({ currentHp, maxHp, width = scale(150), height = scale(16), showText = true }) => {
+  ({ currentHp, maxHp, width = scale(150), height = scale(16), showText = true, isBoss = false }) => {
     const hpPercent = Math.max(0, Math.min(1, currentHp / maxHp));
 
     const getHpColor = () => {
+      if (isBoss) {
+        // Boss has gold/purple health bar
+        if (hpPercent > 0.5) return '#fbbf24'; // gold
+        if (hpPercent > 0.25) return '#f97316'; // orange
+        return '#dc2626'; // red
+      }
       if (hpPercent > 0.5) return COLORS.hpFull;
       if (hpPercent > 0.25) return COLORS.hpMid;
       return COLORS.hpLow;

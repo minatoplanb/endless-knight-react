@@ -89,10 +89,12 @@ export const BattleView = React.memo(() => {
     () => getBackgroundForArea(stage.currentAreaId),
     [stage.currentAreaId]
   );
+  // Use sprite from enemy data directly
   const currentEnemyType = useMemo(
-    () => (enemy ? findEnemySpriteByName(stage.currentAreaId, enemy.name) : 'slime_green'),
-    [stage.currentAreaId, enemy?.name]
+    () => (enemy?.sprite || findEnemySpriteByName(stage.currentAreaId, enemy?.name || '')),
+    [enemy?.sprite, enemy?.name, stage.currentAreaId]
   );
+  const isBoss = enemy?.isBoss || false;
 
   return (
     <View style={styles.container}>
@@ -130,18 +132,25 @@ export const BattleView = React.memo(() => {
           <View style={styles.characterContainer}>
             {enemy && !stage.isTraveling ? (
               <>
-                <Text style={styles.characterLabel}>{enemy.name}</Text>
+                {isBoss && (
+                  <Text style={styles.bossTitle}>{enemy.bossTitle}</Text>
+                )}
+                <Text style={[styles.characterLabel, isBoss && styles.bossLabel]}>
+                  {isBoss ? `👑 ${enemy.name}` : enemy.name}
+                </Text>
                 <CharacterSprite
                   isPlayer={false}
                   isHurt={enemyHurt}
                   isDead={enemy.currentHp <= 0}
                   enemyType={currentEnemyType}
+                  isBoss={isBoss}
                 />
                 <View style={styles.healthBarContainer}>
                   <HealthBar
                     currentHp={enemy.currentHp}
                     maxHp={enemy.maxHp}
-                    width={scale(120)}
+                    width={scale(isBoss ? 140 : 120)}
+                    isBoss={isBoss}
                   />
                 </View>
               </>
@@ -205,6 +214,16 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     marginBottom: SPACING.xs,
     fontWeight: 'bold',
+  },
+  bossLabel: {
+    fontSize: FONT_SIZES.md,
+    color: '#fbbf24',
+  },
+  bossTitle: {
+    fontSize: FONT_SIZES.xs,
+    color: '#ef4444',
+    fontWeight: 'bold',
+    marginBottom: 2,
   },
   healthBarContainer: {
     marginTop: SPACING.sm,

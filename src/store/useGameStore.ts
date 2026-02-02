@@ -43,6 +43,11 @@ import {
   PRESTIGE_UPGRADES,
 } from '../data/prestige';
 import {
+  getBossByAreaId,
+  isBossStage,
+  calculateBossStats,
+} from '../data/bosses';
+import {
   AREAS,
   getAreaById,
   getStartingArea,
@@ -84,6 +89,34 @@ const startingArea = getStartingArea();
 
 // Create enemy from area data
 const createEnemyFromArea = (area: Area, stageInArea: number): Enemy => {
+  // Check if this is a boss stage
+  if (isBossStage(area.id, stageInArea, area.stages)) {
+    const boss = getBossByAreaId(area.id);
+    if (boss) {
+      // Get average base stats from area enemies for boss calculation
+      const avgHp = area.enemies.reduce((sum, e) => sum + e.baseHp, 0) / area.enemies.length;
+      const avgAtk = area.enemies.reduce((sum, e) => sum + e.baseAtk, 0) / area.enemies.length;
+      const avgDef = area.enemies.reduce((sum, e) => sum + e.baseDef, 0) / area.enemies.length;
+
+      const bossStats = calculateBossStats(boss, avgHp, avgAtk, avgDef, stageInArea);
+
+      return {
+        id: generateId(),
+        name: boss.name,
+        maxHp: bossStats.hp,
+        currentHp: bossStats.hp,
+        atk: bossStats.atk,
+        def: bossStats.def,
+        goldDrop: bossStats.gold,
+        combatStyle: boss.combatStyle,
+        isBoss: true,
+        bossTitle: boss.title,
+        sprite: boss.sprite,
+      };
+    }
+  }
+
+  // Regular enemy
   const areaEnemy = selectRandomEnemy(area);
   const stats = calculateEnemyStats(areaEnemy, stageInArea);
 
@@ -93,8 +126,11 @@ const createEnemyFromArea = (area: Area, stageInArea: number): Enemy => {
     maxHp: stats.hp,
     currentHp: stats.hp,
     atk: stats.atk,
+    def: stats.def,
     goldDrop: stats.gold,
     combatStyle: areaEnemy.combatStyle,
+    isBoss: false,
+    sprite: areaEnemy.sprite,
   };
 };
 
@@ -110,8 +146,11 @@ const createEnemy = (stage: number): Enemy => {
     maxHp: Math.floor(ENEMY_SCALING.hpBase * Math.pow(ENEMY_SCALING.hpMultiplier, stageMultiplier)),
     currentHp: Math.floor(ENEMY_SCALING.hpBase * Math.pow(ENEMY_SCALING.hpMultiplier, stageMultiplier)),
     atk: Math.floor(ENEMY_SCALING.atkBase * Math.pow(ENEMY_SCALING.atkMultiplier, stageMultiplier)),
+    def: 0,
     goldDrop: Math.floor(ENEMY_SCALING.goldBase * Math.pow(ENEMY_SCALING.goldMultiplier, stageMultiplier)),
     combatStyle: randomStyle,
+    isBoss: false,
+    sprite: 'slime_green',
   };
 };
 
@@ -405,13 +444,15 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     const currentArea = getAreaById(state.stage.currentAreaId);
     const goldEarned = state.currentEnemy.goldDrop;
+    const isActualBoss = state.currentEnemy.isBoss;
     const newEnemiesKilled = state.stage.enemiesKilled + 1;
 
     let newStage = state.stage.currentStage;
-    const isBoss = newEnemiesKilled >= STAGE.enemiesPerStage;
+    const isStageComplete = newEnemiesKilled >= STAGE.enemiesPerStage;
     let areaCleared = false;
 
-    if (isBoss) {
+    // Boss kill or stage complete triggers stage advancement
+    if (isActualBoss || isStageComplete) {
       // Check if this was the last stage of the area
       if (currentArea && newStage >= currentArea.stages) {
         areaCleared = true;
@@ -421,10 +462,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
       }
     }
 
-    // Check for loot drop
+    // Check for loot drop - bosses always drop loot
     let loot: Equipment | null = null;
-    if (LootSystem.shouldDropLoot(state.stage.currentStage, isBoss)) {
-      loot = LootSystem.generateDrop(state.stage.currentStage, isBoss);
+    if (isActualBoss) {
+      // Boss guaranteed drop with higher rarity
+      loot = LootSystem.generateDrop(state.stage.currentStage, true);
+    } else if (LootSystem.shouldDropLoot(state.stage.currentStage, isStageComplete)) {
+      loot = LootSystem.generateDrop(state.stage.currentStage, isStageComplete);
     }
 
     // Auto-collect loot
@@ -483,7 +527,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         ...state.stage,
         currentStage: newStage,
         highestStage: Math.max(state.stage.highestStage, newStage),
-        enemiesKilled: isBoss ? 0 : newEnemiesKilled,
+        enemiesKilled: (isActualBoss || isStageComplete) ? 0 : newEnemiesKilled,
         travelProgress: 0,
         isTraveling: true,
       },
