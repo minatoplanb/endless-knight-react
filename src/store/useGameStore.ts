@@ -92,6 +92,7 @@ import {
   getWorkerUpgradeCost as getWorkerUpgradeCostFromData,
 } from '../data/gathering';
 import { ALL_RESOURCES, RESOURCE_BASE_CAP } from '../data/resources';
+import { ACHIEVEMENTS, getAchievementById } from '../data/achievements';
 
 const generateId = () => Math.random().toString(36).substring(2, 9);
 
@@ -300,6 +301,9 @@ const initialState: GameState = {
   skillBuffs: [],
   // Statistics
   statistics: createDefaultStatistics(),
+  // Achievements
+  unlockedAchievements: [],
+  pendingAchievement: null,
   damagePopups: [],
   isPlayerDead: false,
   showDeathModal: false,
@@ -328,6 +332,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     // Always tick skill buffs
     get().tickSkillBuffs();
+
+    // Check achievements periodically
+    get().checkAchievements();
 
     if (state.isPlayerDead) return;
 
@@ -783,6 +790,82 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   setShowOfflineModal: (show) => {
     set({ showOfflineModal: show });
+  },
+
+  // Achievements
+  checkAchievements: () => {
+    const state = get();
+    const statistics = state.statistics;
+    const unlockedAchievements = state.unlockedAchievements;
+    const areaProgress = state.areaProgress;
+    const prestige = state.prestige;
+
+    for (const achievement of ACHIEVEMENTS) {
+      // Skip if already unlocked
+      if (unlockedAchievements.includes(achievement.id)) continue;
+
+      let unlocked = false;
+
+      switch (achievement.condition.type) {
+        case 'stat_threshold': {
+          const statKey = achievement.condition.stat as keyof typeof statistics;
+          if (statKey && statistics[statKey] >= achievement.condition.threshold) {
+            unlocked = true;
+          }
+          break;
+        }
+        case 'area_clear': {
+          const areaId = achievement.condition.areaId;
+          if (areaId && areaProgress[areaId]?.cleared) {
+            unlocked = true;
+          }
+          break;
+        }
+        case 'prestige': {
+          if (prestige.prestigeCount >= achievement.condition.threshold) {
+            unlocked = true;
+          }
+          break;
+        }
+      }
+
+      if (unlocked) {
+        // Unlock the achievement
+        const newUnlocked = [...unlockedAchievements, achievement.id];
+        set({
+          unlockedAchievements: newUnlocked,
+          pendingAchievement: achievement.id,
+        });
+
+        // Grant reward if any
+        if (achievement.reward) {
+          switch (achievement.reward.type) {
+            case 'gold':
+              set({ gold: state.gold + achievement.reward.amount });
+              break;
+            case 'skill_points':
+              get().addSkillPoints(achievement.reward.amount);
+              break;
+            case 'prestige_points':
+              set({
+                prestige: {
+                  ...state.prestige,
+                  prestigePoints: state.prestige.prestigePoints + achievement.reward.amount,
+                  totalPrestigePoints: state.prestige.totalPrestigePoints + achievement.reward.amount,
+                },
+              });
+              break;
+          }
+        }
+
+        // Only show one achievement at a time
+        return;
+      }
+    }
+  },
+
+  dismissAchievement: () => {
+    set({ pendingAchievement: null });
   },
 
   // Equipment
@@ -1542,6 +1625,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       skills: state.skills,
       skillBuffs: state.skillBuffs,
       statistics: state.statistics,
+      unlockedAchievements: state.unlockedAchievements,
     };
 
     try {
@@ -1602,6 +1686,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         skills: data.skills || createDefaultSkillState(),
         skillBuffs: data.skillBuffs || [],
         statistics: data.statistics || createDefaultStatistics(),
+        unlockedAchievements: data.unlockedAchievements || [],
       });
 
       // Recalculate stats with prestige bonuses

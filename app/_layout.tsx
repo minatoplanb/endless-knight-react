@@ -8,6 +8,7 @@ import { useGameStore } from '../src/store/useGameStore';
 import { GameEngine } from '../src/engine/GameEngine';
 import { BottomNav } from '../src/components/ui/BottomNav';
 import { LootModal } from '../src/components/modals/LootModal';
+import { AchievementModal } from '../src/components/modals/AchievementModal';
 
 export default function RootLayout() {
   const loadGame = useGameStore((state) => state.loadGame);
@@ -45,6 +46,7 @@ export default function RootLayout() {
       </View>
       <BottomNav />
       <LootModal />
+      <AchievementModal />
     </>
   );
 

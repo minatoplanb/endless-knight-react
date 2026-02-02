@@ -237,6 +237,10 @@ export interface GameState {
   // Statistics
   statistics: GameStatistics;
 
+  // Achievements
+  unlockedAchievements: string[]; // Array of achievement IDs that have been unlocked
+  pendingAchievement: string | null; // Achievement ID to show in notification
+
   // UI State
   damagePopups: DamagePopup[];
   isPlayerDead: boolean;
@@ -340,6 +344,10 @@ export interface GameActions {
   setShowDeathModal: (show: boolean) => void;
   setShowOfflineModal: (show: boolean) => void;
 
+  // Achievements
+  checkAchievements: () => void;
+  dismissAchievement: () => void;
+
   // Save/Load
   saveGame: () => Promise<void>;
   loadGame: () => Promise<void>;
@@ -378,4 +386,6 @@ export interface SaveData {
   skillBuffs?: SkillBuff[];
   // Statistics (added in v1.0.0)
   statistics?: GameStatistics;
+  // Achievements (added in v1.1.0)
+  unlockedAchievements?: string[];
 }

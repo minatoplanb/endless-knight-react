@@ -15,7 +15,7 @@ const NAV_ITEMS: NavItem[] = [
   { route: '/crafting', label: '製作', icon: '🔨' },
   { route: '/equipment', label: '裝備', icon: '🛡️' },
   { route: '/skills', label: '技能', icon: '✨' },
-  { route: '/stats', label: '統計', icon: '📊' },
+  { route: '/achievements', label: '成就', icon: '🏆' },
   { route: '/prestige', label: '轉生', icon: '🔄' },
 ];
 
