@@ -182,6 +182,24 @@ export interface DamagePopup {
   timestamp: number;
 }
 
+// Statistics tracking
+export interface GameStatistics {
+  totalEnemiesKilled: number;
+  totalBossesKilled: number;
+  totalDeaths: number;
+  totalDamageDealt: number;
+  totalDamageTaken: number;
+  totalCriticalHits: number;
+  totalGoldEarned: number;
+  totalPlayTimeMs: number;
+  highestDamageDealt: number;
+  longestKillStreak: number;
+  currentKillStreak: number;
+  itemsCrafted: number;
+  consumablesUsed: number;
+  skillsUsed: number;
+}
+
 export interface GameState {
   // Player
   player: PlayerStats;
@@ -215,6 +233,9 @@ export interface GameState {
   // Skills System
   skills: SkillState;
   skillBuffs: SkillBuff[];
+
+  // Statistics
+  statistics: GameStatistics;
 
   // UI State
   damagePopups: DamagePopup[];
@@ -355,4 +376,6 @@ export interface SaveData {
   // Skills (added in v0.9.0)
   skills?: SkillState;
   skillBuffs?: SkillBuff[];
+  // Statistics (added in v1.0.0)
+  statistics?: GameStatistics;
 }

@@ -44,7 +44,7 @@ export const AREAS: Area[] = [
     description: '和平的草原，適合新手冒險者磨練技巧。',
     background: 'forest',
     requiredLevel: 0,
-    stages: 10,
+    stages: 100,
     enemies: [
       {
         id: 'slime_green',
@@ -101,7 +101,7 @@ export const AREAS: Area[] = [
     description: '茂密的樹林遮蔽了陽光，危險的生物潛伏其中。',
     background: 'dark_forest',
     requiredLevel: 20,
-    stages: 15,
+    stages: 100,
     enemies: [
       {
         id: 'bat',
@@ -158,7 +158,7 @@ export const AREAS: Area[] = [
     description: '荒涼的高地，骷髏戰士在此守護古老的遺跡。',
     background: 'desert',
     requiredLevel: 40,
-    stages: 20,
+    stages: 100,
     enemies: [
       {
         id: 'skeleton',
@@ -226,7 +226,7 @@ export const AREAS: Area[] = [
     description: '濃霧籠罩的沼澤地帶，毒性生物橫行。',
     background: 'forest_winter',
     requiredLevel: 60,
-    stages: 25,
+    stages: 100,
     enemies: [
       {
         id: 'swamp_bat',
@@ -294,7 +294,7 @@ export const AREAS: Area[] = [
     description: '熔岩流淌的地獄深處，惡魔和亡靈統治此地。',
     background: 'hell',
     requiredLevel: 80,
-    stages: 30,
+    stages: 100,
     enemies: [
       {
         id: 'lava_slime',

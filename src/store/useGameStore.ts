@@ -25,6 +25,7 @@ import {
   SkillState,
   SkillBuff,
   SkillId,
+  GameStatistics,
 } from '../types';
 import {
   getCombatMultiplier,
@@ -210,6 +211,24 @@ const createDefaultSkillState = (): SkillState => ({
   totalSkillPointsEarned: 1,
 });
 
+// Create default statistics state
+const createDefaultStatistics = (): GameStatistics => ({
+  totalEnemiesKilled: 0,
+  totalBossesKilled: 0,
+  totalDeaths: 0,
+  totalDamageDealt: 0,
+  totalDamageTaken: 0,
+  totalCriticalHits: 0,
+  totalGoldEarned: 0,
+  totalPlayTimeMs: 0,
+  highestDamageDealt: 0,
+  longestKillStreak: 0,
+  currentKillStreak: 0,
+  itemsCrafted: 0,
+  consumablesUsed: 0,
+  skillsUsed: 0,
+});
+
 // Create default gathering state
 const createDefaultGatheringState = (): GatheringState => {
   const workers: Record<WorkerType, Worker> = {} as Record<WorkerType, Worker>;
@@ -279,6 +298,8 @@ const initialState: GameState = {
   // Skills system
   skills: createDefaultSkillState(),
   skillBuffs: [],
+  // Statistics
+  statistics: createDefaultStatistics(),
   damagePopups: [],
   isPlayerDead: false,
   showDeathModal: false,
@@ -414,6 +435,16 @@ export const useGameStore = create<GameStore>((set, get) => ({
       isPlayerDamage: false,
     });
 
+    // Track statistics
+    set({
+      statistics: {
+        ...state.statistics,
+        totalDamageDealt: state.statistics.totalDamageDealt + damage,
+        totalCriticalHits: state.statistics.totalCriticalHits + (isCrit ? 1 : 0),
+        highestDamageDealt: Math.max(state.statistics.highestDamageDealt, damage),
+      },
+    });
+
     if (newEnemyHp <= 0) {
       get().killEnemy();
     } else {
@@ -450,6 +481,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
       value: damage,
       isCrit: false,
       isPlayerDamage: true,
+    });
+
+    // Track statistics
+    set({
+      statistics: {
+        ...state.statistics,
+        totalDamageTaken: state.statistics.totalDamageTaken + damage,
+      },
     });
 
     if (newPlayerHp <= 0) {
@@ -564,6 +603,16 @@ export const useGameStore = create<GameStore>((set, get) => ({
       }
     }
 
+    // Update statistics
+    const newStats = {
+      ...state.statistics,
+      totalEnemiesKilled: state.statistics.totalEnemiesKilled + 1,
+      totalBossesKilled: state.statistics.totalBossesKilled + (isActualBoss ? 1 : 0),
+      totalGoldEarned: state.statistics.totalGoldEarned + goldEarned,
+      currentKillStreak: state.statistics.currentKillStreak + 1,
+      longestKillStreak: Math.max(state.statistics.longestKillStreak, state.statistics.currentKillStreak + 1),
+    };
+
     set({
       gold: state.gold + goldEarned,
       totalGoldEarned: state.totalGoldEarned + goldEarned,
@@ -580,6 +629,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       unlockedAreas: newUnlockedAreas,
       equipment: newEquipment,
       inventory: newInventory,
+      statistics: newStats,
       ...(loot ? { pendingLoot: loot, showLootModal: showLoot } : {}),
     });
 
@@ -597,11 +647,16 @@ export const useGameStore = create<GameStore>((set, get) => ({
   playerDie: () => {
     const state = get();
 
-    // Set player as dead briefly
+    // Set player as dead briefly and track statistics
     set({
       player: {
         ...state.player,
         currentHp: 0,
+      },
+      statistics: {
+        ...state.statistics,
+        totalDeaths: state.statistics.totalDeaths + 1,
+        currentKillStreak: 0, // Reset kill streak on death
       },
       isPlayerDead: true,
     });
@@ -1065,6 +1120,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
         ...state.gathering,
         resources: newResources,
       },
+      statistics: {
+        ...state.statistics,
+        itemsCrafted: state.statistics.itemsCrafted + 1,
+      },
     });
 
     return true;
@@ -1150,7 +1209,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     // Remove empty stacks
     const filteredConsumables = newConsumables.filter((c) => c.amount > 0);
-    set({ consumables: filteredConsumables });
+    set({
+      consumables: filteredConsumables,
+      statistics: {
+        ...state.statistics,
+        consumablesUsed: state.statistics.consumablesUsed + 1,
+      },
+    });
 
     return true;
   },
@@ -1369,7 +1434,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         break;
     }
 
-    // Set cooldown
+    // Set cooldown and track statistics
     set({
       skills: {
         ...state.skills,
@@ -1377,6 +1442,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
           ...state.skills.cooldowns,
           [skillId]: Date.now() + skill.cooldown,
         },
+      },
+      statistics: {
+        ...state.statistics,
+        skillsUsed: state.statistics.skillsUsed + 1,
       },
     });
 
@@ -1453,7 +1522,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   saveGame: async () => {
     const state = get();
     const saveData: SaveData = {
-      version: '0.9.0',
+      version: '1.0.0',
       player: state.player,
       upgrades: state.upgrades,
       gold: state.gold,
@@ -1472,6 +1541,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       prestige: state.prestige,
       skills: state.skills,
       skillBuffs: state.skillBuffs,
+      statistics: state.statistics,
     };
 
     try {
@@ -1531,6 +1601,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         prestige: data.prestige || createDefaultPrestigeState(),
         skills: data.skills || createDefaultSkillState(),
         skillBuffs: data.skillBuffs || [],
+        statistics: data.statistics || createDefaultStatistics(),
       });
 
       // Recalculate stats with prestige bonuses

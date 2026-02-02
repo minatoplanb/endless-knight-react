@@ -44,8 +44,8 @@ export const SKILLS: Record<SkillId, Skill> = {
     description: '對敵人造成大量傷害',
     icon: '⚔️',
     cooldown: 10000, // 10 seconds
-    unlockCost: 1,
-    upgradeCost: 1,
+    unlockCost: 3,
+    upgradeCost: 5,
     maxLevel: 10,
     baseEffect: {
       type: 'instant_damage',
@@ -60,8 +60,8 @@ export const SKILLS: Record<SkillId, Skill> = {
     description: '恢復自身生命值',
     icon: '💚',
     cooldown: 15000, // 15 seconds
-    unlockCost: 1,
-    upgradeCost: 1,
+    unlockCost: 3,
+    upgradeCost: 5,
     maxLevel: 10,
     baseEffect: {
       type: 'instant_heal',
@@ -76,8 +76,8 @@ export const SKILLS: Record<SkillId, Skill> = {
     description: '短時間內減少受到的傷害',
     icon: '🛡️',
     cooldown: 20000, // 20 seconds
-    unlockCost: 2,
-    upgradeCost: 1,
+    unlockCost: 5,
+    upgradeCost: 8,
     maxLevel: 5,
     baseEffect: {
       type: 'buff_defense',
@@ -93,8 +93,8 @@ export const SKILLS: Record<SkillId, Skill> = {
     description: '大幅提升攻擊速度',
     icon: '🔥',
     cooldown: 25000, // 25 seconds
-    unlockCost: 2,
-    upgradeCost: 1,
+    unlockCost: 5,
+    upgradeCost: 8,
     maxLevel: 5,
     baseEffect: {
       type: 'buff_attack_speed',
@@ -110,8 +110,8 @@ export const SKILLS: Record<SkillId, Skill> = {
     description: '提高暴擊率',
     icon: '👁️',
     cooldown: 20000, // 20 seconds
-    unlockCost: 2,
-    upgradeCost: 1,
+    unlockCost: 5,
+    upgradeCost: 8,
     maxLevel: 5,
     baseEffect: {
       type: 'buff_crit',
@@ -127,8 +127,8 @@ export const SKILLS: Record<SkillId, Skill> = {
     description: '短時間內獲得更多金幣',
     icon: '💰',
     cooldown: 30000, // 30 seconds
-    unlockCost: 3,
-    upgradeCost: 2,
+    unlockCost: 8,
+    upgradeCost: 10,
     maxLevel: 5,
     baseEffect: {
       type: 'buff_gold',

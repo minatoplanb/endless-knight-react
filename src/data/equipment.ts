@@ -28,9 +28,10 @@ export const RARITY_DROP_RATES: Record<Rarity, number> = {
 };
 
 // Base drop chance per enemy kill (increases with stage)
-export const BASE_DROP_CHANCE = 0.08; // 8%
-export const DROP_CHANCE_PER_STAGE = 0.001; // +0.1% per stage
-export const MAX_DROP_CHANCE = 0.25; // 25% max
+// Like Melvor Idle: drops should be rare and meaningful
+export const BASE_DROP_CHANCE = 0.01; // 1%
+export const DROP_CHANCE_PER_STAGE = 0.0002; // +0.02% per stage
+export const MAX_DROP_CHANCE = 0.05; // 5% max
 
 // Boss guaranteed drop
 export const BOSS_DROP_CHANCE = 1.0; // 100%

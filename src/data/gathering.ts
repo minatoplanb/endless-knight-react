@@ -51,11 +51,11 @@ export interface WorkerLevel {
 }
 
 export const WORKER_LEVELS: WorkerLevel[] = [
-  { level: 1, interval: 10, upgradeCost: 0 },      // Base level: 1 per 10 seconds
-  { level: 2, interval: 8, upgradeCost: 500 },     // 1 per 8 seconds
-  { level: 3, interval: 6, upgradeCost: 2000 },    // 1 per 6 seconds
-  { level: 4, interval: 4, upgradeCost: 8000 },    // 1 per 4 seconds
-  { level: 5, interval: 2, upgradeCost: 32000 },   // 1 per 2 seconds (max)
+  { level: 1, interval: 15, upgradeCost: 0 },       // Base level: 1 per 15 seconds
+  { level: 2, interval: 12, upgradeCost: 2000 },    // 1 per 12 seconds
+  { level: 3, interval: 9, upgradeCost: 10000 },    // 1 per 9 seconds
+  { level: 4, interval: 6, upgradeCost: 50000 },    // 1 per 6 seconds
+  { level: 5, interval: 4, upgradeCost: 200000 },   // 1 per 4 seconds (max)
 ];
 
 export const WORKER_MAX_LEVEL = 5;

@@ -17,26 +17,27 @@ export const STAGE = {
   enemiesPerStage: 10,
 };
 
-// Enemy scaling
+// Enemy scaling - enemies get tougher faster
 export const ENEMY_SCALING = {
-  hpBase: 30,
-  hpMultiplier: 1.15,
-  atkBase: 5,
-  atkMultiplier: 1.08,
+  hpBase: 40,
+  hpMultiplier: 1.08, // Compounds over 100 stages per area
+  atkBase: 8,
+  atkMultiplier: 1.05,
   goldBase: 10,
-  goldMultiplier: 1.1,
+  goldMultiplier: 1.05,
 };
 
 // Upgrade costs and effects
-export const UPGRADE_BASE_COST = 50; // Reduced from 100
-export const UPGRADE_COST_MULTIPLIER = 1.35; // Reduced from 1.5 for smoother progression
+// Balanced for slower progression - upgrades should feel meaningful
+export const UPGRADE_BASE_COST = 100;
+export const UPGRADE_COST_MULTIPLIER = 1.5;
 
 export const UPGRADE_EFFECTS = {
-  hp: { perLevel: 15, stat: 'maxHp' as const },
-  atk: { perLevel: 5, stat: 'atk' as const },
-  def: { perLevel: 3, stat: 'def' as const },
-  speed: { perLevel: 0.05, stat: 'attackSpeed' as const },
-  crit: { perLevel: 0.005, stat: 'critChance' as const },
+  hp: { perLevel: 10, stat: 'maxHp' as const },
+  atk: { perLevel: 3, stat: 'atk' as const },
+  def: { perLevel: 2, stat: 'def' as const },
+  speed: { perLevel: 0.03, stat: 'attackSpeed' as const },
+  crit: { perLevel: 0.003, stat: 'critChance' as const },
 };
 
 // Offline rewards

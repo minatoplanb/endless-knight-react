@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, Image } from 'react-native';
+import { View, Text, StyleSheet, Animated, Image, TouchableOpacity } from 'react-native';
 import { useGameStore } from '../../store/useGameStore';
 import { COLORS, SPACING, FONT_SIZES, scale } from '../../constants/theme';
 import { RARITY_NAMES, SLOT_NAMES } from '../../data/equipment';
@@ -126,42 +126,44 @@ export const LootModal = React.memo(() => {
           opacity: opacityAnim,
         },
       ]}
-      pointerEvents="none"
+      pointerEvents="box-none"
     >
-      <View style={[styles.toast, { borderColor: rarityColor }]}>
-        <View style={styles.header}>
-          <Text style={styles.headerText}>獲得裝備！</Text>
-        </View>
-        <View style={styles.content}>
-          {iconSource && (
-            <Image source={iconSource} style={styles.icon} resizeMode="contain" />
-          )}
-          <View style={styles.info}>
-            <Text style={[styles.itemName, { color: rarityColor }]}>
-              {pendingLoot.name}
-            </Text>
-            <Text style={styles.itemMeta}>
-              {RARITY_NAMES[pendingLoot.rarity]} {SLOT_NAMES[pendingLoot.slot]}
-            </Text>
-            <View style={styles.statsRow}>
-              {Object.entries(pendingLoot.stats).map(([key, value]) =>
-                value !== 0 ? (
-                  <Text
-                    key={key}
-                    style={[
-                      styles.statText,
-                      { color: value > 0 ? COLORS.hpFull : COLORS.hpLow },
-                    ]}
-                  >
-                    {formatStat(key, value)}
-                  </Text>
-                ) : null
-              )}
+      <TouchableOpacity activeOpacity={0.8} onPress={handleDismiss}>
+        <View style={[styles.toast, { borderColor: rarityColor }]}>
+          <View style={styles.header}>
+            <Text style={styles.headerText}>獲得裝備！</Text>
+          </View>
+          <View style={styles.content}>
+            {iconSource && (
+              <Image source={iconSource} style={styles.icon} resizeMode="contain" />
+            )}
+            <View style={styles.info}>
+              <Text style={[styles.itemName, { color: rarityColor }]}>
+                {pendingLoot.name}
+              </Text>
+              <Text style={styles.itemMeta}>
+                {RARITY_NAMES[pendingLoot.rarity]} {SLOT_NAMES[pendingLoot.slot]}
+              </Text>
+              <View style={styles.statsRow}>
+                {Object.entries(pendingLoot.stats).map(([key, value]) =>
+                  value !== 0 ? (
+                    <Text
+                      key={key}
+                      style={[
+                        styles.statText,
+                        { color: value > 0 ? COLORS.hpFull : COLORS.hpLow },
+                      ]}
+                    >
+                      {formatStat(key, value)}
+                    </Text>
+                  ) : null
+                )}
+              </View>
             </View>
           </View>
+          <Text style={styles.autoText}>點擊關閉</Text>
         </View>
-        <Text style={styles.autoText}>已自動放入背包</Text>
-      </View>
+      </TouchableOpacity>
     </Animated.View>
   );
 });
