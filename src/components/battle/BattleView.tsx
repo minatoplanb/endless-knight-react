@@ -195,6 +195,24 @@ export const BattleView = React.memo(() => {
         />
       )}
 
+      {/* Traveling Indicator - centered overlay */}
+      {stage.isTraveling && (
+        <View style={styles.travelingOverlay}>
+          <View style={styles.travelingCard}>
+            <Text style={styles.travelingEmoji}>🚶‍♂️</Text>
+            <Text style={styles.travelingLabel}>前往下一個敵人</Text>
+            <View style={styles.travelingProgressOuter}>
+              <View
+                style={[
+                  styles.travelingProgressInner,
+                  { width: `${stage.travelProgress}%` },
+                ]}
+              />
+            </View>
+          </View>
+        </View>
+      )}
+
       {/* Battle area - on top of background */}
       <View style={styles.battleArea}>
           {/* Player */}
@@ -246,18 +264,7 @@ export const BattleView = React.memo(() => {
                 </View>
               </>
             ) : (
-              <View style={styles.travelingContainer}>
-                <Text style={styles.travelingIcon}>🚶</Text>
-                <Text style={styles.travelingText}>移動中...</Text>
-                <View style={styles.travelingProgressContainer}>
-                  <View
-                    style={[
-                      styles.travelingProgressBar,
-                      { width: `${stage.travelProgress}%` },
-                    ]}
-                  />
-                </View>
-              </View>
+              <View style={styles.travelingPlaceholder} />
             )}
           </View>
         </View>
@@ -366,6 +373,47 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: COLORS.textGold,
     borderRadius: scale(2),
+  },
+  travelingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 5,
+  },
+  travelingCard: {
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    paddingHorizontal: SPACING.xl,
+    paddingVertical: SPACING.lg,
+    borderRadius: scale(16),
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  travelingEmoji: {
+    fontSize: scale(32),
+    marginBottom: SPACING.sm,
+  },
+  travelingLabel: {
+    fontSize: FONT_SIZES.md,
+    color: COLORS.text,
+    fontWeight: 'bold',
+    marginBottom: SPACING.md,
+  },
+  travelingProgressOuter: {
+    width: scale(120),
+    height: scale(6),
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: scale(3),
+    overflow: 'hidden',
+  },
+  travelingProgressInner: {
+    height: '100%',
+    backgroundColor: COLORS.textGold,
+    borderRadius: scale(3),
+  },
+  travelingPlaceholder: {
+    width: scale(120),
+    height: scale(100),
   },
   popupContainer: {
     ...StyleSheet.absoluteFillObject,
