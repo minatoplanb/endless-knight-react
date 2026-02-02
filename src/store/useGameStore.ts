@@ -84,6 +84,7 @@ import {
   BACKPACK_MAX_LEVEL,
   BACKPACK_UPGRADE_BASE_COST,
   BACKPACK_UPGRADE_COST_MULTIPLIER,
+  getCraftedEquipment,
 } from '../data/equipment';
 import {
   ALL_WORKERS,
@@ -1017,6 +1018,35 @@ export const useGameStore = create<GameStore>((set, get) => ({
     });
   },
 
+  sellItem: (itemId: string) => {
+    const state = get();
+    const item = state.inventory.find((i) => i.id === itemId);
+    if (!item) return false;
+
+    // Calculate sell price based on rarity and level
+    const rarityMultipliers: Record<string, number> = {
+      common: 10,
+      uncommon: 25,
+      rare: 75,
+      epic: 200,
+      legendary: 500,
+    };
+    const basePrice = rarityMultipliers[item.rarity] || 10;
+    const sellPrice = Math.floor(basePrice * (1 + item.level * 0.1));
+
+    set({
+      inventory: state.inventory.filter((i) => i.id !== itemId),
+      gold: state.gold + sellPrice,
+      totalGoldEarned: state.totalGoldEarned + sellPrice,
+      statistics: {
+        ...state.statistics,
+        totalGoldEarned: state.statistics.totalGoldEarned + sellPrice,
+      },
+    });
+
+    return true;
+  },
+
   getEquipmentBonus: (): EquipmentStats => {
     const state = get();
     const bonus: EquipmentStats = {
@@ -1281,8 +1311,31 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (recipe.itemType === 'consumable') {
       // Add to consumables
       get().addConsumable(recipe.outputId, recipe.outputAmount);
+    } else if (recipe.itemType === 'equipment') {
+      // Get crafted equipment base stats
+      const baseEquip = getCraftedEquipment(recipe.outputId);
+      if (baseEquip) {
+        // Check inventory space
+        if (state.inventory.length >= get().getBackpackCapacity()) {
+          return false; // Inventory full
+        }
+
+        // Create equipment item with uncommon rarity (crafted items are better than drops)
+        const craftedItem: Equipment = {
+          id: `crafted_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+          baseId: baseEquip.id,
+          name: baseEquip.name,
+          slot: baseEquip.slot,
+          rarity: 'uncommon', // Crafted items are uncommon quality
+          stats: { ...baseEquip.baseStats },
+          icon: baseEquip.icon,
+          level: Math.max(1, Math.floor(state.stage.currentStage / 10)),
+        };
+
+        // Add to inventory
+        set({ inventory: [...state.inventory, craftedItem] });
+      }
     }
-    // TODO: Handle equipment crafting (add to inventory)
 
     set({
       gold: newGold,

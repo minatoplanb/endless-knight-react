@@ -4,6 +4,7 @@ import { useGameStore } from '../../store/useGameStore';
 import { COLORS, SPACING, FONT_SIZES, scale } from '../../constants/theme';
 import { Equipment, Rarity } from '../../types';
 import { ItemDetail } from './ItemDetail';
+import { getSellPrice } from '../../data/equipment';
 
 const RARITY_COLORS: Record<Rarity, string> = {
   common: COLORS.common,
@@ -71,6 +72,7 @@ export const InventoryGrid = React.memo(() => {
   const equipment = useGameStore((state) => state.equipment);
   const equipItem = useGameStore((state) => state.equipItem);
   const removeFromInventory = useGameStore((state) => state.removeFromInventory);
+  const sellItem = useGameStore((state) => state.sellItem);
   const getBackpackCapacity = useGameStore((state) => state.getBackpackCapacity);
   const [selectedItem, setSelectedItem] = useState<Equipment | null>(null);
 
@@ -100,6 +102,13 @@ export const InventoryGrid = React.memo(() => {
       setSelectedItem(null);
     }
   }, [selectedItem, removeFromInventory]);
+
+  const handleSell = useCallback(() => {
+    if (selectedItem) {
+      sellItem(selectedItem.id);
+      setSelectedItem(null);
+    }
+  }, [selectedItem, sellItem]);
 
   const handleCloseDetail = useCallback(() => {
     setSelectedItem(null);
@@ -150,10 +159,13 @@ export const InventoryGrid = React.memo(() => {
         <ItemDetail
           item={selectedItem}
           onEquip={handleEquip}
+          onSell={handleSell}
           onDiscard={handleDiscard}
           onClose={handleCloseDetail}
           showEquip
+          showSell
           showDiscard
+          sellPrice={getSellPrice(selectedItem)}
           compareWith={currentEquipped}
         />
       )}

@@ -52,10 +52,13 @@ interface ItemDetailProps {
   onEquip?: () => void;
   onUnequip?: () => void;
   onDiscard?: () => void;
+  onSell?: () => void;
   onClose?: () => void;
   showEquip?: boolean;
   showUnequip?: boolean;
   showDiscard?: boolean;
+  showSell?: boolean;
+  sellPrice?: number;
   compareWith?: Equipment | null;
 }
 
@@ -65,10 +68,13 @@ export const ItemDetail = React.memo(
     onEquip,
     onUnequip,
     onDiscard,
+    onSell,
     onClose,
     showEquip,
     showUnequip,
     showDiscard,
+    showSell,
+    sellPrice,
     compareWith,
   }: ItemDetailProps) => {
     const rarityColor = RARITY_COLORS[item.rarity];
@@ -149,6 +155,20 @@ export const ItemDetail = React.memo(
               onPress={onUnequip}
             >
               <Text style={styles.buttonText}>卸下</Text>
+            </Pressable>
+          )}
+          {showSell && onSell && (
+            <Pressable
+              style={({ pressed }) => [
+                styles.button,
+                styles.sellButton,
+                pressed && styles.buttonPressed,
+              ]}
+              onPress={onSell}
+            >
+              <Text style={styles.buttonText}>
+                賣出 {sellPrice ? `💰${sellPrice}` : ''}
+              </Text>
             </Pressable>
           )}
           {showDiscard && onDiscard && (
@@ -237,6 +257,9 @@ const styles = StyleSheet.create({
   },
   unequipButton: {
     backgroundColor: COLORS.buttonPrimary,
+  },
+  sellButton: {
+    backgroundColor: '#b8860b', // Dark golden for sell
   },
   discardButton: {
     backgroundColor: COLORS.buttonDanger,

@@ -231,6 +231,33 @@ export const ALL_EQUIPMENT: BaseEquipment[] = [
   ...AMULETS,
 ];
 
+// Crafted equipment definitions (for crafting system)
+export const CRAFTED_EQUIPMENT: Record<string, BaseEquipment> = {
+  // Forge
+  crafted_sword_1: { id: 'crafted_sword_1', name: '鍛造鐵劍', slot: 'weapon', icon: 'sword_basic', baseStats: { atk: 6 } },
+  crafted_sword_2: { id: 'crafted_sword_2', name: '鍛造鋼劍', slot: 'weapon', icon: 'sword_iron', baseStats: { atk: 10, critChance: 0.02 } },
+  crafted_armor_1: { id: 'crafted_armor_1', name: '鍛造鐵甲', slot: 'armor', icon: 'armor', baseStats: { def: 5, maxHp: 20 } },
+  crafted_armor_2: { id: 'crafted_armor_2', name: '鍛造鋼甲', slot: 'armor', icon: 'armor', baseStats: { def: 8, maxHp: 35 } },
+  crafted_helmet_1: { id: 'crafted_helmet_1', name: '鍛造鐵盔', slot: 'helmet', icon: 'helmet', baseStats: { def: 4, maxHp: 15 } },
+  crafted_shield_1: { id: 'crafted_shield_1', name: '鍛造鐵盾', slot: 'shield', icon: 'shield', baseStats: { def: 6, maxHp: 10 } },
+  crafted_axe_1: { id: 'crafted_axe_1', name: '鍛造戰斧', slot: 'weapon', icon: 'axe', baseStats: { atk: 14, attackSpeed: -0.1 } },
+  // Fletching
+  crafted_bow_1: { id: 'crafted_bow_1', name: '製作短弓', slot: 'weapon', icon: 'bow', baseStats: { atk: 5, critChance: 0.04, attackSpeed: 0.1 } },
+  crafted_bow_2: { id: 'crafted_bow_2', name: '製作長弓', slot: 'weapon', icon: 'bow', baseStats: { atk: 8, critChance: 0.06, attackSpeed: 0.15 } },
+  crafted_leather_1: { id: 'crafted_leather_1', name: '製作皮甲', slot: 'armor', icon: 'armor', baseStats: { def: 3, maxHp: 15, attackSpeed: 0.05 } },
+  crafted_leather_2: { id: 'crafted_leather_2', name: '製作獵人甲', slot: 'armor', icon: 'armor', baseStats: { def: 5, maxHp: 25, attackSpeed: 0.08 } },
+  crafted_staff_1: { id: 'crafted_staff_1', name: '製作木杖', slot: 'weapon', icon: 'staff', baseStats: { atk: 4, critMultiplier: 0.3 } },
+  crafted_staff_2: { id: 'crafted_staff_2', name: '製作魔法杖', slot: 'weapon', icon: 'staff', baseStats: { atk: 7, critMultiplier: 0.5 } },
+  crafted_ring_1: { id: 'crafted_ring_1', name: '製作木戒', slot: 'ring', icon: 'ring', baseStats: { maxHp: 15 } },
+  // Alchemy
+  crafted_amulet_1: { id: 'crafted_amulet_1', name: '草藥護符', slot: 'amulet', icon: 'amulet', baseStats: { maxHp: 30, def: 2 } },
+};
+
+// Get crafted equipment by ID
+export const getCraftedEquipment = (id: string): BaseEquipment | undefined => {
+  return CRAFTED_EQUIPMENT[id];
+};
+
 // Slot display names (Chinese)
 export const SLOT_NAMES: Record<EquipmentSlotType, string> = {
   weapon: '武器',
@@ -252,3 +279,18 @@ export const RARITY_NAMES: Record<Rarity, string> = {
 
 // Level scaling for item stats
 export const ITEM_LEVEL_MULTIPLIER = 0.05; // +5% per item level
+
+// Sell price multipliers by rarity
+export const SELL_PRICE_BY_RARITY: Record<Rarity, number> = {
+  common: 10,
+  uncommon: 25,
+  rare: 75,
+  epic: 200,
+  legendary: 500,
+};
+
+// Calculate sell price for an item
+export const getSellPrice = (item: { rarity: Rarity; level: number }): number => {
+  const basePrice = SELL_PRICE_BY_RARITY[item.rarity];
+  return Math.floor(basePrice * (1 + item.level * 0.1));
+};

@@ -105,6 +105,36 @@ export const CONSUMABLES: Record<string, Consumable> = {
     maxStack: 20,
     effect: { type: 'heal', amount: 50 },
   },
+  potion_crit_1: {
+    id: 'potion_crit_1',
+    name: '暴擊藥水',
+    description: '暴擊率 +15% (60秒)',
+    type: 'potion',
+    icon: '💥',
+    stackable: true,
+    maxStack: 20,
+    effect: { type: 'buff', buffType: 'critChance', multiplier: 1.15, duration: 60000 },
+  },
+  potion_healing_2: {
+    id: 'potion_healing_2',
+    name: '大型治療藥水',
+    description: '立即恢復 100 HP',
+    type: 'potion',
+    icon: '❤️‍🔥',
+    stackable: true,
+    maxStack: 20,
+    effect: { type: 'heal', amount: 100 },
+  },
+  potion_strength_2: {
+    id: 'potion_strength_2',
+    name: '超級力量藥水',
+    description: 'ATK +40% (60秒)',
+    type: 'potion',
+    icon: '💪',
+    stackable: true,
+    maxStack: 10,
+    effect: { type: 'buff', buffType: 'atk', multiplier: 1.4, duration: 60000 },
+  },
 };
 
 // ========== HELPER FUNCTIONS ==========

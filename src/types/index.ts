@@ -297,6 +297,7 @@ export interface GameActions {
   unequipItem: (slot: EquipmentSlotType) => void;
   addToInventory: (item: Equipment) => void;
   removeFromInventory: (itemId: string) => void;
+  sellItem: (itemId: string) => boolean;
   getEquipmentBonus: () => EquipmentStats;
   setShowLootModal: (show: boolean) => void;
   dismissLootToast: () => void;
