@@ -32,6 +32,24 @@ export interface PrestigeState {
   upgrades: Record<string, number>; // upgrade id -> level
 }
 
+// Skills System Types
+export type SkillId = 'power_strike' | 'heal' | 'shield' | 'berserk' | 'critical_eye' | 'gold_rush';
+
+export interface SkillState {
+  unlockedSkills: Record<SkillId, number>; // skill id -> level (0 = not unlocked)
+  cooldowns: Record<SkillId, number>; // skill id -> cooldown end timestamp
+  skillPoints: number; // Available skill points to spend
+  totalSkillPointsEarned: number;
+}
+
+export interface SkillBuff {
+  id: string;
+  skillId: SkillId;
+  type: 'defense' | 'attack_speed' | 'crit' | 'gold';
+  multiplier: number; // e.g., 1.5 for +50%
+  expiresAt: number;
+}
+
 export interface Worker {
   type: WorkerType;
   level: number;
@@ -194,6 +212,10 @@ export interface GameState {
   // Prestige System
   prestige: PrestigeState;
 
+  // Skills System
+  skills: SkillState;
+  skillBuffs: SkillBuff[];
+
   // UI State
   damagePopups: DamagePopup[];
   isPlayerDead: boolean;
@@ -280,6 +302,15 @@ export interface GameActions {
   getPrestigeUpgradeCost: (upgradeId: string) => number;
   getPrestigeBonus: (effectType: string) => number;
 
+  // Skills System
+  useSkill: (skillId: SkillId) => boolean;
+  upgradeSkill: (skillId: SkillId) => boolean;
+  isSkillReady: (skillId: SkillId) => boolean;
+  getSkillCooldownRemaining: (skillId: SkillId) => number;
+  tickSkillBuffs: () => void;
+  getSkillBuffMultiplier: (buffType: 'defense' | 'attack_speed' | 'crit' | 'gold') => number;
+  addSkillPoints: (amount: number) => void;
+
   // Damage popups
   addDamagePopup: (popup: Omit<DamagePopup, 'id' | 'timestamp'>) => void;
   removeDamagePopup: (id: string) => void;
@@ -321,4 +352,7 @@ export interface SaveData {
   activeBuffs?: ActiveBuff[];
   // Prestige (added in v0.8.0)
   prestige?: PrestigeState;
+  // Skills (added in v0.9.0)
+  skills?: SkillState;
+  skillBuffs?: SkillBuff[];
 }

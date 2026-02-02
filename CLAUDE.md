@@ -450,9 +450,9 @@ Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 - [x] 消耗品系統 (食物/藥水/Buff)
 - [x] 轉生系統 (轉生點數、永久升級)
 - [x] Boss 戰 (區域 Boss、特殊 UI、保證掉落)
+- [x] 技能系統 (6 技能、冷卻、技能點、升級)
 
 ### 🔲 待完成
-- [ ] 技能系統
 - [ ] AdMob 廣告
 - [ ] IAP 內購
 - [ ] Google Play 上架

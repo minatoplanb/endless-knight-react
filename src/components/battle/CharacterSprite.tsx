@@ -74,6 +74,10 @@ export const CharacterSprite = React.memo<CharacterSpriteProps>(
 
     const imageSource = isPlayer ? PLAYER_IMAGE : getEnemyImage(enemyType);
 
+    // Player faces RIGHT (→) - original sprite already faces right, no flip needed
+    // Enemies face LEFT (←) - original sprites face right, need to flip
+    const shouldFlip = !isPlayer; // Only flip enemies
+
     return (
       <Animated.View
         style={[
@@ -93,6 +97,7 @@ export const CharacterSprite = React.memo<CharacterSpriteProps>(
             {
               width: actualSize,
               height: actualSize,
+              transform: shouldFlip ? [{ scaleX: -1 }] : [],
             },
           ]}
           resizeMode="contain"
@@ -111,10 +116,7 @@ export const CharacterSprite = React.memo<CharacterSpriteProps>(
             },
           ]}
         />
-        {/* Boss glow effect */}
-        {isBoss && (
-          <View style={[styles.bossGlow, { width: actualSize + 20, height: actualSize + 20 }]} />
-        )}
+        {/* Boss indicator removed - was causing visual issues */}
       </Animated.View>
     );
   }
@@ -136,11 +138,5 @@ const styles = StyleSheet.create({
     position: 'absolute',
     backgroundColor: '#ff0000',
     borderRadius: scale(8),
-  },
-  bossGlow: {
-    position: 'absolute',
-    backgroundColor: 'rgba(255, 215, 0, 0.2)',
-    borderRadius: scale(50),
-    zIndex: -1,
   },
 });

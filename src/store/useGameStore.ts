@@ -22,6 +22,9 @@ import {
   ActiveBuff,
   BuffType,
   PrestigeState,
+  SkillState,
+  SkillBuff,
+  SkillId,
 } from '../types';
 import {
   getCombatMultiplier,
@@ -47,6 +50,13 @@ import {
   isBossStage,
   calculateBossStats,
 } from '../data/bosses';
+import {
+  SKILLS,
+  getSkillById,
+  getSkillEffectValue,
+  getSkillUpgradeCost,
+  ALL_SKILL_IDS,
+} from '../data/skills';
 import {
   AREAS,
   getAreaById,
@@ -178,6 +188,28 @@ const createDefaultPrestigeState = (): PrestigeState => ({
   upgrades: {},
 });
 
+// Create default skill state
+const createDefaultSkillState = (): SkillState => ({
+  unlockedSkills: {
+    power_strike: 0,
+    heal: 0,
+    shield: 0,
+    berserk: 0,
+    critical_eye: 0,
+    gold_rush: 0,
+  },
+  cooldowns: {
+    power_strike: 0,
+    heal: 0,
+    shield: 0,
+    berserk: 0,
+    critical_eye: 0,
+    gold_rush: 0,
+  },
+  skillPoints: 1, // Start with 1 skill point
+  totalSkillPointsEarned: 1,
+});
+
 // Create default gathering state
 const createDefaultGatheringState = (): GatheringState => {
   const workers: Record<WorkerType, Worker> = {} as Record<WorkerType, Worker>;
@@ -244,6 +276,9 @@ const initialState: GameState = {
   activeBuffs: [],
   // Prestige system
   prestige: createDefaultPrestigeState(),
+  // Skills system
+  skills: createDefaultSkillState(),
+  skillBuffs: [],
   damagePopups: [],
   isPlayerDead: false,
   showDeathModal: false,
@@ -269,6 +304,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     // Always tick buffs
     get().tickBuffs();
+
+    // Always tick skill buffs
+    get().tickSkillBuffs();
 
     if (state.isPlayerDead) return;
 
@@ -344,16 +382,20 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const state = get();
     if (!state.currentEnemy || state.isPlayerDead) return;
 
-    // Apply attack speed buff
+    // Apply attack speed buff (consumables + skill buffs)
     const speedBuff = get().getBuffMultiplier('attackSpeed');
-    const attackChance = state.player.attackSpeed * speedBuff * (TICK_INTERVAL / 1000);
+    const skillSpeedBuff = get().getSkillBuffMultiplier('attack_speed');
+    const attackChance = state.player.attackSpeed * speedBuff * skillSpeedBuff * (TICK_INTERVAL / 1000);
     if (Math.random() > attackChance) return;
 
     // Apply ATK buff
     const atkBuff = get().getBuffMultiplier('atk');
     const buffedAtk = Math.floor(state.player.atk * atkBuff);
 
-    const isCrit = Math.random() < state.player.critChance;
+    // Apply crit buff from skills
+    const skillCritBuff = get().getSkillBuffMultiplier('crit');
+    const effectiveCritChance = state.player.critChance * skillCritBuff;
+    const isCrit = Math.random() < effectiveCritChance;
     let baseDamage = Math.max(1, buffedAtk - Math.floor(state.currentEnemy.atk * 0.1));
 
     // Apply combat style multiplier
@@ -391,9 +433,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const attackChance = 1 * (TICK_INTERVAL / 1000); // Enemy attacks once per second
     if (Math.random() > attackChance) return;
 
-    // Apply DEF buff
+    // Apply DEF buff (consumables + skill buffs)
     const defBuff = get().getBuffMultiplier('def');
-    const buffedDef = Math.floor(state.player.def * defBuff);
+    const skillDefBuff = get().getSkillBuffMultiplier('defense');
+    const buffedDef = Math.floor(state.player.def * defBuff * skillDefBuff);
 
     let baseDamage = Math.max(1, state.currentEnemy.atk - buffedDef);
 
@@ -443,7 +486,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (!state.currentEnemy) return;
 
     const currentArea = getAreaById(state.stage.currentAreaId);
-    const goldEarned = state.currentEnemy.goldDrop;
+    // Apply gold buff from skills
+    const skillGoldBuff = get().getSkillBuffMultiplier('gold');
+    const goldEarned = Math.floor(state.currentEnemy.goldDrop * skillGoldBuff);
     const isActualBoss = state.currentEnemy.isBoss;
     const newEnemiesKilled = state.stage.enemiesKilled + 1;
 
@@ -541,6 +586,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
     // Recalculate stats if equipment changed
     if (loot && LootSystem.isUpgrade(state.equipment[loot.slot], loot)) {
       get().recalculateStats();
+    }
+
+    // Award skill points for boss kills
+    if (isActualBoss) {
+      get().addSkillPoints(1);
     }
   },
 
@@ -1248,11 +1298,162 @@ export const useGameStore = create<GameStore>((set, get) => ({
     return totalBonus;
   },
 
+  // Skills System
+  useSkill: (skillId: SkillId) => {
+    const state = get();
+    const skill = getSkillById(skillId);
+    const level = state.skills.unlockedSkills[skillId];
+
+    // Check if skill is unlocked
+    if (level <= 0) return false;
+
+    // Check if skill is ready (not on cooldown)
+    if (!get().isSkillReady(skillId)) return false;
+
+    // Check if in combat (has enemy)
+    if (!state.currentEnemy && skill.baseEffect.type === 'instant_damage') return false;
+
+    const effectValue = getSkillEffectValue(skill, level);
+
+    // Apply skill effect
+    switch (skill.baseEffect.type) {
+      case 'instant_damage':
+        if (state.currentEnemy) {
+          const newEnemyHp = state.currentEnemy.currentHp - effectValue;
+          get().addDamagePopup({
+            value: effectValue,
+            isCrit: false,
+            isPlayerDamage: false,
+          });
+          if (newEnemyHp <= 0) {
+            get().killEnemy();
+          } else {
+            set({
+              currentEnemy: {
+                ...state.currentEnemy,
+                currentHp: newEnemyHp,
+              },
+            });
+          }
+        }
+        break;
+
+      case 'instant_heal':
+        const newHp = Math.min(state.player.maxHp, state.player.currentHp + effectValue);
+        set({
+          player: {
+            ...state.player,
+            currentHp: newHp,
+          },
+        });
+        break;
+
+      case 'buff_defense':
+      case 'buff_attack_speed':
+      case 'buff_crit':
+      case 'buff_gold':
+        const buffType = skill.baseEffect.type === 'buff_defense' ? 'defense' :
+                         skill.baseEffect.type === 'buff_attack_speed' ? 'attack_speed' :
+                         skill.baseEffect.type === 'buff_crit' ? 'crit' : 'gold';
+        const newBuff: SkillBuff = {
+          id: generateId(),
+          skillId,
+          type: buffType,
+          multiplier: 1 + effectValue / 100,
+          expiresAt: Date.now() + (skill.baseEffect.duration || 5000),
+        };
+        // Remove existing buff of same type and add new one
+        const newBuffs = state.skillBuffs.filter((b) => b.type !== buffType);
+        newBuffs.push(newBuff);
+        set({ skillBuffs: newBuffs });
+        break;
+    }
+
+    // Set cooldown
+    set({
+      skills: {
+        ...state.skills,
+        cooldowns: {
+          ...state.skills.cooldowns,
+          [skillId]: Date.now() + skill.cooldown,
+        },
+      },
+    });
+
+    return true;
+  },
+
+  upgradeSkill: (skillId: SkillId) => {
+    const state = get();
+    const skill = getSkillById(skillId);
+    const currentLevel = state.skills.unlockedSkills[skillId];
+
+    // Check max level
+    if (currentLevel >= skill.maxLevel) return false;
+
+    // Check cost
+    const cost = getSkillUpgradeCost(skill, currentLevel);
+    if (state.skills.skillPoints < cost) return false;
+
+    set({
+      skills: {
+        ...state.skills,
+        unlockedSkills: {
+          ...state.skills.unlockedSkills,
+          [skillId]: currentLevel + 1,
+        },
+        skillPoints: state.skills.skillPoints - cost,
+      },
+    });
+
+    return true;
+  },
+
+  isSkillReady: (skillId: SkillId) => {
+    const state = get();
+    const cooldownEnd = state.skills.cooldowns[skillId] || 0;
+    return Date.now() >= cooldownEnd;
+  },
+
+  getSkillCooldownRemaining: (skillId: SkillId) => {
+    const state = get();
+    const cooldownEnd = state.skills.cooldowns[skillId] || 0;
+    return Math.max(0, cooldownEnd - Date.now());
+  },
+
+  tickSkillBuffs: () => {
+    const state = get();
+    const now = Date.now();
+    const expiredBuffs = state.skillBuffs.filter((b) => b.expiresAt <= now);
+
+    if (expiredBuffs.length > 0) {
+      const newBuffs = state.skillBuffs.filter((b) => b.expiresAt > now);
+      set({ skillBuffs: newBuffs });
+    }
+  },
+
+  getSkillBuffMultiplier: (buffType: 'defense' | 'attack_speed' | 'crit' | 'gold') => {
+    const state = get();
+    const buff = state.skillBuffs.find((b) => b.type === buffType);
+    return buff ? buff.multiplier : 1.0;
+  },
+
+  addSkillPoints: (amount: number) => {
+    const state = get();
+    set({
+      skills: {
+        ...state.skills,
+        skillPoints: state.skills.skillPoints + amount,
+        totalSkillPointsEarned: state.skills.totalSkillPointsEarned + amount,
+      },
+    });
+  },
+
   // Save/Load
   saveGame: async () => {
     const state = get();
     const saveData: SaveData = {
-      version: '0.8.0',
+      version: '0.9.0',
       player: state.player,
       upgrades: state.upgrades,
       gold: state.gold,
@@ -1269,6 +1470,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       consumables: state.consumables,
       activeBuffs: state.activeBuffs,
       prestige: state.prestige,
+      skills: state.skills,
+      skillBuffs: state.skillBuffs,
     };
 
     try {
@@ -1326,6 +1529,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
         consumables: data.consumables || [],
         activeBuffs: data.activeBuffs || [],
         prestige: data.prestige || createDefaultPrestigeState(),
+        skills: data.skills || createDefaultSkillState(),
+        skillBuffs: data.skillBuffs || [],
       });
 
       // Recalculate stats with prestige bonuses

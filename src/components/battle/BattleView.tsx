@@ -97,15 +97,14 @@ export const BattleView = React.memo(() => {
   const isBoss = enemy?.isBoss || false;
 
   return (
-    <View style={styles.container}>
-      {/* Background */}
-      <ImageBackground
-        source={currentBackground}
-        style={styles.background}
-        resizeMode="cover"
-      >
-        {/* Battle area */}
-        <View style={styles.battleArea}>
+    <ImageBackground
+      source={currentBackground}
+      style={styles.container}
+      imageStyle={styles.backgroundImage}
+      resizeMode="cover"
+    >
+      {/* Battle area */}
+      <View style={styles.battleArea}>
           {/* Player */}
           <View style={styles.characterContainer}>
             <Text style={styles.characterLabel}>戰士</Text>
@@ -162,41 +161,37 @@ export const BattleView = React.memo(() => {
           </View>
         </View>
 
-        {/* Damage popups */}
-        <View style={styles.popupContainer}>
-          {damagePopups.map((popup) => (
-            <View
-              key={popup.id}
-              style={[
-                styles.popupWrapper,
-                {
-                  left: popup.isPlayerDamage ? '25%' : '75%',
-                },
-              ]}
-            >
-              <DamagePopupItem
-                value={popup.value}
-                isCrit={popup.isCrit}
-                isPlayerDamage={popup.isPlayerDamage}
-                onComplete={() => removeDamagePopup(popup.id)}
-              />
-            </View>
-          ))}
-        </View>
-      </ImageBackground>
-    </View>
+      {/* Damage popups */}
+      <View style={styles.popupContainer}>
+        {damagePopups.map((popup) => (
+          <View
+            key={popup.id}
+            style={[
+              styles.popupWrapper,
+              {
+                left: popup.isPlayerDamage ? '25%' : '75%',
+              },
+            ]}
+          >
+            <DamagePopupItem
+              value={popup.value}
+              isCrit={popup.isCrit}
+              isPlayerDamage={popup.isPlayerDamage}
+              onComplete={() => removeDamagePopup(popup.id)}
+            />
+          </View>
+        ))}
+      </View>
+    </ImageBackground>
   );
 });
 
 const styles = StyleSheet.create({
   container: {
     flex: 3,
-    position: 'relative',
   },
-  background: {
-    flex: 1,
-    width: '100%',
-    height: '100%',
+  backgroundImage: {
+    // ImageBackground imageStyle
   },
   battleArea: {
     flex: 1,

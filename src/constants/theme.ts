@@ -60,6 +60,7 @@ export const SPACING = {
 };
 
 export const FONT_SIZES = {
+  xxs: scale(8),
   xs: scale(10),
   sm: scale(12),
   md: scale(14),
