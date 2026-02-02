@@ -24,6 +24,14 @@ export interface ActiveBuff {
   sourceId: string;
 }
 
+// Prestige System Types
+export interface PrestigeState {
+  prestigePoints: number;
+  totalPrestigePoints: number; // Lifetime earned
+  prestigeCount: number; // Number of times prestiged
+  upgrades: Record<string, number>; // upgrade id -> level
+}
+
 export interface Worker {
   type: WorkerType;
   level: number;
@@ -179,6 +187,9 @@ export interface GameState {
   consumables: ConsumableStack[];
   activeBuffs: ActiveBuff[];
 
+  // Prestige System
+  prestige: PrestigeState;
+
   // UI State
   damagePopups: DamagePopup[];
   isPlayerDead: boolean;
@@ -257,6 +268,14 @@ export interface GameActions {
   tickBuffs: () => void;
   getBuffMultiplier: (buffType: BuffType) => number;
 
+  // Prestige System
+  canPrestige: () => boolean;
+  getPrestigePointsPreview: () => number;
+  doPrestige: () => boolean;
+  buyPrestigeUpgrade: (upgradeId: string) => boolean;
+  getPrestigeUpgradeCost: (upgradeId: string) => number;
+  getPrestigeBonus: (effectType: string) => number;
+
   // Damage popups
   addDamagePopup: (popup: Omit<DamagePopup, 'id' | 'timestamp'>) => void;
   removeDamagePopup: (id: string) => void;
@@ -296,4 +315,6 @@ export interface SaveData {
   // Consumables (added in v0.7.0)
   consumables?: ConsumableStack[];
   activeBuffs?: ActiveBuff[];
+  // Prestige (added in v0.8.0)
+  prestige?: PrestigeState;
 }

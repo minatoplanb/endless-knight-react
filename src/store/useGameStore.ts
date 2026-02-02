@@ -21,6 +21,7 @@ import {
   ConsumableStack,
   ActiveBuff,
   BuffType,
+  PrestigeState,
 } from '../types';
 import {
   getCombatMultiplier,
@@ -34,6 +35,13 @@ import {
   getConsumableById,
   CONSUMABLES,
 } from '../data/consumables';
+import {
+  getPrestigeUpgradeById,
+  getUpgradeCost as getPrestigeUpgradeCostFromData,
+  calculatePrestigePoints,
+  canPrestige as canPrestigeCheck,
+  PRESTIGE_UPGRADES,
+} from '../data/prestige';
 import {
   AREAS,
   getAreaById,
@@ -123,6 +131,14 @@ const emptyEquipmentSlots: EquipmentSlots = {
   amulet: null,
 };
 
+// Create default prestige state
+const createDefaultPrestigeState = (): PrestigeState => ({
+  prestigePoints: 0,
+  totalPrestigePoints: 0,
+  prestigeCount: 0,
+  upgrades: {},
+});
+
 // Create default gathering state
 const createDefaultGatheringState = (): GatheringState => {
   const workers: Record<WorkerType, Worker> = {} as Record<WorkerType, Worker>;
@@ -187,6 +203,8 @@ const initialState: GameState = {
   // Consumables system
   consumables: [],
   activeBuffs: [],
+  // Prestige system
+  prestige: createDefaultPrestigeState(),
   damagePopups: [],
   isPlayerDead: false,
   showDeathModal: false,
@@ -546,12 +564,27 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const upgrades = state.upgrades;
     const equipBonus = get().getEquipmentBonus();
 
-    const maxHp = PLAYER_BASE.maxHp + upgrades.hp * UPGRADE_EFFECTS.hp.perLevel + (equipBonus.maxHp || 0);
-    const atk = PLAYER_BASE.atk + upgrades.atk * UPGRADE_EFFECTS.atk.perLevel + (equipBonus.atk || 0);
-    const def = PLAYER_BASE.def + upgrades.def * UPGRADE_EFFECTS.def.perLevel + (equipBonus.def || 0);
-    const attackSpeed = PLAYER_BASE.attackSpeed + upgrades.speed * UPGRADE_EFFECTS.speed.perLevel + (equipBonus.attackSpeed || 0);
-    const critChance = PLAYER_BASE.critChance + upgrades.crit * UPGRADE_EFFECTS.crit.perLevel + (equipBonus.critChance || 0);
+    // Get prestige bonuses (percentages)
+    const hpBonus = 1 + get().getPrestigeBonus('hp_percent') / 100;
+    const atkBonus = 1 + get().getPrestigeBonus('atk_percent') / 100;
+    const defBonus = 1 + get().getPrestigeBonus('def_percent') / 100;
+    const speedBonus = 1 + get().getPrestigeBonus('attack_speed') / 100;
+    const critBonus = get().getPrestigeBonus('crit_chance') / 100;
+
+    // Base stats + upgrades + equipment
+    const baseMaxHp = PLAYER_BASE.maxHp + upgrades.hp * UPGRADE_EFFECTS.hp.perLevel + (equipBonus.maxHp || 0);
+    const baseAtk = PLAYER_BASE.atk + upgrades.atk * UPGRADE_EFFECTS.atk.perLevel + (equipBonus.atk || 0);
+    const baseDef = PLAYER_BASE.def + upgrades.def * UPGRADE_EFFECTS.def.perLevel + (equipBonus.def || 0);
+    const baseAttackSpeed = PLAYER_BASE.attackSpeed + upgrades.speed * UPGRADE_EFFECTS.speed.perLevel + (equipBonus.attackSpeed || 0);
+    const baseCritChance = PLAYER_BASE.critChance + upgrades.crit * UPGRADE_EFFECTS.crit.perLevel + (equipBonus.critChance || 0);
     const critMultiplier = PLAYER_BASE.critMultiplier + (equipBonus.critMultiplier || 0);
+
+    // Apply prestige bonuses
+    const maxHp = Math.floor(baseMaxHp * hpBonus);
+    const atk = Math.floor(baseAtk * atkBonus);
+    const def = Math.floor(baseDef * defBonus);
+    const attackSpeed = baseAttackSpeed * speedBonus;
+    const critChance = baseCritChance + critBonus;
 
     const hpRatio = state.player.currentHp / state.player.maxHp;
 
@@ -1045,11 +1078,137 @@ export const useGameStore = create<GameStore>((set, get) => ({
     return buff ? buff.multiplier : 1.0;
   },
 
+  // Prestige System
+  canPrestige: () => {
+    const state = get();
+    return canPrestigeCheck(state.totalGoldEarned, state.stage.highestStage);
+  },
+
+  getPrestigePointsPreview: () => {
+    const state = get();
+    // Count cleared areas
+    const clearedAreas = Object.values(state.areaProgress).filter((p) => p.cleared).length;
+    return calculatePrestigePoints(state.totalGoldEarned, state.stage.highestStage, clearedAreas);
+  },
+
+  doPrestige: () => {
+    const state = get();
+    if (!get().canPrestige()) return false;
+
+    const pointsEarned = get().getPrestigePointsPreview();
+    if (pointsEarned <= 0) return false;
+
+    // Calculate starting gold from prestige bonus
+    const startingGoldBonus = get().getPrestigeBonus('starting_gold');
+
+    // Reset game state but keep prestige data
+    set({
+      // Reset player to base stats (will recalculate with prestige bonuses)
+      player: {
+        ...PLAYER_BASE,
+        currentHp: PLAYER_BASE.maxHp,
+      },
+      upgrades: {
+        hp: 0,
+        atk: 0,
+        def: 0,
+        speed: 0,
+        crit: 0,
+      },
+      gold: startingGoldBonus,
+      totalGoldEarned: 0,
+      combatStyle: 'melee',
+      equipment: { ...emptyEquipmentSlots },
+      inventory: [],
+      backpackLevel: 0,
+      stage: {
+        currentStage: 1,
+        highestStage: 1,
+        enemiesKilled: 0,
+        travelProgress: 0,
+        isTraveling: true,
+        currentAreaId: startingArea.id,
+      },
+      currentEnemy: null,
+      unlockedAreas: [startingArea.id],
+      areaProgress: {
+        [startingArea.id]: createDefaultAreaProgress(),
+      },
+      gathering: createDefaultGatheringState(),
+      consumables: [],
+      activeBuffs: [],
+      // Update prestige
+      prestige: {
+        ...state.prestige,
+        prestigePoints: state.prestige.prestigePoints + pointsEarned,
+        totalPrestigePoints: state.prestige.totalPrestigePoints + pointsEarned,
+        prestigeCount: state.prestige.prestigeCount + 1,
+      },
+      isPlayerDead: false,
+      showDeathModal: false,
+    });
+
+    // Recalculate stats with prestige bonuses
+    get().recalculateStats();
+
+    return true;
+  },
+
+  buyPrestigeUpgrade: (upgradeId: string) => {
+    const state = get();
+    const upgrade = getPrestigeUpgradeById(upgradeId);
+    if (!upgrade) return false;
+
+    const currentLevel = state.prestige.upgrades[upgradeId] || 0;
+    if (currentLevel >= upgrade.maxLevel) return false;
+
+    const cost = getPrestigeUpgradeCostFromData(upgrade, currentLevel);
+    if (state.prestige.prestigePoints < cost) return false;
+
+    set({
+      prestige: {
+        ...state.prestige,
+        prestigePoints: state.prestige.prestigePoints - cost,
+        upgrades: {
+          ...state.prestige.upgrades,
+          [upgradeId]: currentLevel + 1,
+        },
+      },
+    });
+
+    // Recalculate stats with new bonus
+    get().recalculateStats();
+
+    return true;
+  },
+
+  getPrestigeUpgradeCost: (upgradeId: string) => {
+    const state = get();
+    const upgrade = getPrestigeUpgradeById(upgradeId);
+    if (!upgrade) return 0;
+    const currentLevel = state.prestige.upgrades[upgradeId] || 0;
+    return getPrestigeUpgradeCostFromData(upgrade, currentLevel);
+  },
+
+  getPrestigeBonus: (effectType: string) => {
+    const state = get();
+    let totalBonus = 0;
+
+    for (const upgrade of PRESTIGE_UPGRADES) {
+      if (upgrade.effect.type === effectType) {
+        const level = state.prestige.upgrades[upgrade.id] || 0;
+        totalBonus += upgrade.effect.valuePerLevel * level;
+      }
+    }
+
+    return totalBonus;
+  },
+
   // Save/Load
   saveGame: async () => {
     const state = get();
     const saveData: SaveData = {
-      version: '0.7.0',
+      version: '0.8.0',
       player: state.player,
       upgrades: state.upgrades,
       gold: state.gold,
@@ -1065,6 +1224,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       combatStyle: state.combatStyle,
       consumables: state.consumables,
       activeBuffs: state.activeBuffs,
+      prestige: state.prestige,
     };
 
     try {
@@ -1121,8 +1281,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
         gathering: savedGathering,
         consumables: data.consumables || [],
         activeBuffs: data.activeBuffs || [],
+        prestige: data.prestige || createDefaultPrestigeState(),
       });
 
+      // Recalculate stats with prestige bonuses
+      get().recalculateStats();
       get().calculateOfflineReward();
     } catch (error) {
       console.error('Failed to load game:', error);

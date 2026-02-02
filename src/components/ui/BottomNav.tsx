@@ -14,6 +14,7 @@ const NAV_ITEMS: NavItem[] = [
   { route: '/gathering', label: '採集', icon: '⛏️' },
   { route: '/crafting', label: '製作', icon: '🔨' },
   { route: '/equipment', label: '裝備', icon: '🛡️' },
+  { route: '/prestige', label: '轉生', icon: '🔄' },
 ];
 
 const NavButton = React.memo(
