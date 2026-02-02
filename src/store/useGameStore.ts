@@ -7,6 +7,10 @@ import {
   Enemy,
   DamagePopup,
   SaveData,
+  Equipment,
+  EquipmentSlotType,
+  EquipmentStats,
+  EquipmentSlots,
 } from '../types';
 import {
   PLAYER_BASE,
@@ -19,6 +23,14 @@ import {
   TICK_INTERVAL,
   SAVE_KEY,
 } from '../constants/game';
+import { LootSystem } from '../engine/LootSystem';
+import {
+  BACKPACK_BASE_CAPACITY,
+  BACKPACK_CAPACITY_PER_LEVEL,
+  BACKPACK_MAX_LEVEL,
+  BACKPACK_UPGRADE_BASE_COST,
+  BACKPACK_UPGRADE_COST_MULTIPLIER,
+} from '../data/equipment';
 
 const generateId = () => Math.random().toString(36).substring(2, 9);
 
@@ -32,6 +44,15 @@ const createEnemy = (stage: number): Enemy => {
     atk: Math.floor(ENEMY_SCALING.atkBase * Math.pow(ENEMY_SCALING.atkMultiplier, stageMultiplier)),
     goldDrop: Math.floor(ENEMY_SCALING.goldBase * Math.pow(ENEMY_SCALING.goldMultiplier, stageMultiplier)),
   };
+};
+
+const emptyEquipmentSlots: EquipmentSlots = {
+  weapon: null,
+  helmet: null,
+  armor: null,
+  shield: null,
+  ring: null,
+  amulet: null,
 };
 
 const initialState: GameState = {
@@ -48,6 +69,10 @@ const initialState: GameState = {
   },
   gold: 0,
   totalGoldEarned: 0,
+  equipment: { ...emptyEquipmentSlots },
+  inventory: [],
+  pendingLoot: null,
+  backpackLevel: 0,
   stage: {
     currentStage: 1,
     highestStage: 1,
@@ -60,6 +85,7 @@ const initialState: GameState = {
   isPlayerDead: false,
   showDeathModal: false,
   showOfflineModal: false,
+  showLootModal: false,
   offlineReward: 0,
   lastSaveTime: Date.now(),
   lastOnlineTime: Date.now(),
@@ -218,8 +244,40 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const newEnemiesKilled = state.stage.enemiesKilled + 1;
 
     let newStage = state.stage.currentStage;
-    if (newEnemiesKilled >= STAGE.enemiesPerStage) {
+    const isBoss = newEnemiesKilled >= STAGE.enemiesPerStage;
+    if (isBoss) {
       newStage++;
+    }
+
+    // Check for loot drop
+    let loot: Equipment | null = null;
+    if (LootSystem.shouldDropLoot(state.stage.currentStage, isBoss)) {
+      loot = LootSystem.generateDrop(state.stage.currentStage, isBoss);
+    }
+
+    // Auto-collect loot
+    let newInventory = [...state.inventory];
+    let newEquipment = { ...state.equipment };
+    let showLoot = false;
+
+    if (loot) {
+      const currentEquipped = state.equipment[loot.slot];
+
+      // Auto-equip if it's an upgrade or slot is empty
+      const backpackCapacity = get().getBackpackCapacity();
+      if (LootSystem.isUpgrade(currentEquipped, loot)) {
+        // Move current to inventory if exists
+        if (currentEquipped) {
+          newInventory.push(currentEquipped);
+        }
+        newEquipment[loot.slot] = loot;
+      } else if (newInventory.length < backpackCapacity) {
+        // Add to inventory if space available
+        newInventory.push(loot);
+      }
+      // If inventory full and not upgrade, item is lost (no notification)
+
+      showLoot = true;
     }
 
     set({
@@ -230,11 +288,19 @@ export const useGameStore = create<GameStore>((set, get) => ({
         ...state.stage,
         currentStage: newStage,
         highestStage: Math.max(state.stage.highestStage, newStage),
-        enemiesKilled: newEnemiesKilled >= STAGE.enemiesPerStage ? 0 : newEnemiesKilled,
+        enemiesKilled: isBoss ? 0 : newEnemiesKilled,
         travelProgress: 0,
         isTraveling: true,
       },
+      equipment: newEquipment,
+      inventory: newInventory,
+      ...(loot ? { pendingLoot: loot, showLootModal: showLoot } : {}),
     });
+
+    // Recalculate stats if equipment changed
+    if (loot && LootSystem.isUpgrade(state.equipment[loot.slot], loot)) {
+      get().recalculateStats();
+    }
   },
 
   playerDie: () => {
@@ -299,12 +365,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
   recalculateStats: () => {
     const state = get();
     const upgrades = state.upgrades;
+    const equipBonus = get().getEquipmentBonus();
 
-    const maxHp = PLAYER_BASE.maxHp + upgrades.hp * UPGRADE_EFFECTS.hp.perLevel;
-    const atk = PLAYER_BASE.atk + upgrades.atk * UPGRADE_EFFECTS.atk.perLevel;
-    const def = PLAYER_BASE.def + upgrades.def * UPGRADE_EFFECTS.def.perLevel;
-    const attackSpeed = PLAYER_BASE.attackSpeed + upgrades.speed * UPGRADE_EFFECTS.speed.perLevel;
-    const critChance = PLAYER_BASE.critChance + upgrades.crit * UPGRADE_EFFECTS.crit.perLevel;
+    const maxHp = PLAYER_BASE.maxHp + upgrades.hp * UPGRADE_EFFECTS.hp.perLevel + (equipBonus.maxHp || 0);
+    const atk = PLAYER_BASE.atk + upgrades.atk * UPGRADE_EFFECTS.atk.perLevel + (equipBonus.atk || 0);
+    const def = PLAYER_BASE.def + upgrades.def * UPGRADE_EFFECTS.def.perLevel + (equipBonus.def || 0);
+    const attackSpeed = PLAYER_BASE.attackSpeed + upgrades.speed * UPGRADE_EFFECTS.speed.perLevel + (equipBonus.attackSpeed || 0);
+    const critChance = PLAYER_BASE.critChance + upgrades.crit * UPGRADE_EFFECTS.crit.perLevel + (equipBonus.critChance || 0);
+    const critMultiplier = PLAYER_BASE.critMultiplier + (equipBonus.critMultiplier || 0);
 
     const hpRatio = state.player.currentHp / state.player.maxHp;
 
@@ -317,6 +385,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         def,
         attackSpeed,
         critChance,
+        critMultiplier,
       },
     });
   },
@@ -355,17 +424,153 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set({ showOfflineModal: show });
   },
 
+  // Equipment
+  equipItem: (item: Equipment) => {
+    const state = get();
+    const currentEquipped = state.equipment[item.slot];
+
+    // Move current item to inventory if exists
+    let newInventory = [...state.inventory];
+    if (currentEquipped) {
+      newInventory.push(currentEquipped);
+    }
+
+    // Remove new item from inventory
+    newInventory = newInventory.filter((i) => i.id !== item.id);
+
+    set({
+      equipment: {
+        ...state.equipment,
+        [item.slot]: item,
+      },
+      inventory: newInventory,
+    });
+
+    get().recalculateStats();
+  },
+
+  unequipItem: (slot: EquipmentSlotType) => {
+    const state = get();
+    const item = state.equipment[slot];
+    if (!item) return;
+
+    // Check inventory space
+    if (state.inventory.length >= get().getBackpackCapacity()) {
+      return; // Inventory full
+    }
+
+    set({
+      equipment: {
+        ...state.equipment,
+        [slot]: null,
+      },
+      inventory: [...state.inventory, item],
+    });
+
+    get().recalculateStats();
+  },
+
+  addToInventory: (item: Equipment) => {
+    const state = get();
+    if (state.inventory.length >= get().getBackpackCapacity()) {
+      return; // Inventory full
+    }
+    set({
+      inventory: [...state.inventory, item],
+    });
+  },
+
+  removeFromInventory: (itemId: string) => {
+    set({
+      inventory: get().inventory.filter((i) => i.id !== itemId),
+    });
+  },
+
+  getEquipmentBonus: (): EquipmentStats => {
+    const state = get();
+    const bonus: EquipmentStats = {
+      atk: 0,
+      def: 0,
+      maxHp: 0,
+      attackSpeed: 0,
+      critChance: 0,
+      critMultiplier: 0,
+    };
+
+    const slots = Object.values(state.equipment) as (Equipment | null)[];
+    for (const item of slots) {
+      if (!item) continue;
+      if (item.stats.atk) bonus.atk! += item.stats.atk;
+      if (item.stats.def) bonus.def! += item.stats.def;
+      if (item.stats.maxHp) bonus.maxHp! += item.stats.maxHp;
+      if (item.stats.attackSpeed) bonus.attackSpeed! += item.stats.attackSpeed;
+      if (item.stats.critChance) bonus.critChance! += item.stats.critChance;
+      if (item.stats.critMultiplier) bonus.critMultiplier! += item.stats.critMultiplier;
+    }
+
+    return bonus;
+  },
+
+  setShowLootModal: (show) => {
+    set({ showLootModal: show });
+  },
+
+  // Dismiss loot toast notification (loot is already auto-collected)
+  dismissLootToast: () => {
+    set({
+      pendingLoot: null,
+      showLootModal: false,
+    });
+  },
+
+  // Legacy aliases for backward compatibility
+  collectLoot: () => {
+    get().dismissLootToast();
+  },
+
+  discardLoot: () => {
+    get().dismissLootToast();
+  },
+
+  // Backpack upgrade
+  getBackpackCapacity: () => {
+    const level = get().backpackLevel;
+    return BACKPACK_BASE_CAPACITY + level * BACKPACK_CAPACITY_PER_LEVEL;
+  },
+
+  getBackpackUpgradeCost: () => {
+    const level = get().backpackLevel;
+    return Math.floor(BACKPACK_UPGRADE_BASE_COST * Math.pow(BACKPACK_UPGRADE_COST_MULTIPLIER, level));
+  },
+
+  buyBackpackUpgrade: () => {
+    const state = get();
+    const cost = get().getBackpackUpgradeCost();
+
+    if (state.backpackLevel >= BACKPACK_MAX_LEVEL) return false;
+    if (state.gold < cost) return false;
+
+    set({
+      gold: state.gold - cost,
+      backpackLevel: state.backpackLevel + 1,
+    });
+    return true;
+  },
+
   // Save/Load
   saveGame: async () => {
     const state = get();
     const saveData: SaveData = {
-      version: '0.1.0',
+      version: '0.3.0',
       player: state.player,
       upgrades: state.upgrades,
       gold: state.gold,
       totalGoldEarned: state.totalGoldEarned,
       stage: state.stage,
       lastOnlineTime: Date.now(),
+      equipment: state.equipment,
+      inventory: state.inventory,
+      backpackLevel: state.backpackLevel,
     };
 
     try {
@@ -395,6 +600,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
         },
         currentEnemy: null,
         lastOnlineTime: data.lastOnlineTime,
+        equipment: data.equipment || emptyEquipmentSlots,
+        inventory: data.inventory || [],
+        backpackLevel: data.backpackLevel || 0,
       });
 
       get().calculateOfflineReward();

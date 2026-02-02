@@ -6,6 +6,8 @@ import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import { COLORS } from '../src/constants/theme';
 import { useGameStore } from '../src/store/useGameStore';
 import { GameEngine } from '../src/engine/GameEngine';
+import { BottomNav } from '../src/components/ui/BottomNav';
+import { LootModal } from '../src/components/modals/LootModal';
 
 export default function RootLayout() {
   const loadGame = useGameStore((state) => state.loadGame);
@@ -32,13 +34,17 @@ export default function RootLayout() {
   const content = (
     <>
       <StatusBar style="light" backgroundColor={COLORS.bg} />
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: COLORS.bg },
-          animation: Platform.OS === 'web' ? 'none' : 'fade',
-        }}
-      />
+      <View style={styles.mainContent}>
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: COLORS.bg },
+            animation: Platform.OS === 'web' ? 'none' : 'fade',
+          }}
+        />
+      </View>
+      <BottomNav />
+      <LootModal />
     </>
   );
 
@@ -68,7 +74,7 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
         {content}
       </SafeAreaView>
     </SafeAreaProvider>
@@ -80,13 +86,18 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.bg,
   },
+  mainContent: {
+    flex: 1,
+  },
   mobileWebContainer: {
     flex: 1,
     backgroundColor: COLORS.bg,
     width: '100%',
     height: '100dvh', // Dynamic viewport height for mobile browsers
     paddingTop: 'env(safe-area-inset-top)',
-    paddingBottom: 'env(safe-area-inset-bottom)',
+    paddingBottom: 'max(env(safe-area-inset-bottom), 8px)', // Ensure minimum bottom padding
+    display: 'flex',
+    flexDirection: 'column',
   } as any,
   webWrapper: {
     flex: 1,
@@ -102,5 +113,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderRadius: 20,
     boxShadow: '0 0 30px rgba(0,0,0,0.5)',
+    display: 'flex',
+    flexDirection: 'column',
   } as any,
 });
