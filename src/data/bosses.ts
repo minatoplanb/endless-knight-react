@@ -68,6 +68,36 @@ export const BOSSES: Boss[] = [
     goldMultiplier: 20,
     minDropRarity: 'epic',
   },
+
+  // Area 4: Misty Swamp Boss
+  {
+    id: 'boss_swamp_king',
+    name: '沼澤之王',
+    title: '腐敗統治者',
+    sprite: 'zombie',
+    areaId: 'misty_swamp',
+    combatStyle: 'magic',
+    hpMultiplier: 10,
+    atkMultiplier: 3.5,
+    defMultiplier: 3,
+    goldMultiplier: 25,
+    minDropRarity: 'epic',
+  },
+
+  // Area 5: Flame Hell Boss
+  {
+    id: 'boss_inferno_lord',
+    name: '煉獄魔王',
+    title: '地獄之焰',
+    sprite: 'skeleton_red',
+    areaId: 'flame_hell',
+    combatStyle: 'magic',
+    hpMultiplier: 12,
+    atkMultiplier: 4,
+    defMultiplier: 3.5,
+    goldMultiplier: 30,
+    minDropRarity: 'legendary',
+  },
 ];
 
 // ========== HELPER FUNCTIONS ==========
