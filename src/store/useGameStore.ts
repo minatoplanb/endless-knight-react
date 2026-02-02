@@ -1740,10 +1740,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (!state.offlineGathering) return;
 
     const newResources = { ...state.gathering.resources };
+    const newResourcesCollected = { ...state.statistics.resourcesCollected };
+    let totalCollected = 0;
+
     for (const resourceType of ALL_RESOURCES) {
       const amount = state.offlineGathering[resourceType] || 0;
       const cap = state.gathering.resourceCaps[resourceType];
+      const actualAdded = Math.min(cap - newResources[resourceType], amount);
       newResources[resourceType] = Math.min(cap, newResources[resourceType] + amount);
+      // Track statistics (count all gathered, even if capped)
+      newResourcesCollected[resourceType] += amount;
+      totalCollected += amount;
     }
 
     set({
@@ -1751,8 +1758,16 @@ export const useGameStore = create<GameStore>((set, get) => ({
         ...state.gathering,
         resources: newResources,
       },
+      statistics: {
+        ...state.statistics,
+        resourcesCollected: newResourcesCollected,
+        totalResourcesCollected: state.statistics.totalResourcesCollected + totalCollected,
+      },
       offlineGathering: null,
     });
+
+    // Check achievements after collecting
+    get().checkAchievements();
   },
 
   dismissOfflineGathering: () => {
