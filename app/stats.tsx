@@ -81,6 +81,15 @@ export default function StatsPage() {
           <StatRow icon="🔨" label="物品製作" value={statistics.itemsCrafted} />
           <StatRow icon="🍖" label="消耗品使用" value={statistics.consumablesUsed} />
           <StatRow icon="✨" label="技能使用" value={statistics.skillsUsed} />
+          <StatRow icon="⬆️" label="強化次數" value={statistics.enhancementsAttempted} />
+        </StatSection>
+
+        <StatSection title="採集統計">
+          <StatRow icon="⛏️" label="礦石採集" value={statistics.resourcesCollected.ore} />
+          <StatRow icon="🪓" label="木材採集" value={statistics.resourcesCollected.wood} />
+          <StatRow icon="🐟" label="魚獲採集" value={statistics.resourcesCollected.fish} />
+          <StatRow icon="🌿" label="草藥採集" value={statistics.resourcesCollected.herb} />
+          <StatRow icon="📦" label="總資源採集" value={statistics.totalResourcesCollected} />
         </StatSection>
 
         <StatSection title="時間統計">
