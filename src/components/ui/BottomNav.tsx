@@ -1,7 +1,8 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
 import { COLORS, SPACING, FONT_SIZES, scale, LAYOUT } from '../../constants/theme';
+import { useGameStore } from '../../store/useGameStore';
 
 interface NavItem {
   route: string;
@@ -24,10 +25,12 @@ const NavButton = React.memo(
     item,
     isActive,
     onPress,
+    badge,
   }: {
     item: NavItem;
     isActive: boolean;
     onPress: () => void;
+    badge?: number;
   }) => {
     return (
       <Pressable
@@ -38,7 +41,14 @@ const NavButton = React.memo(
         ]}
         onPress={onPress}
       >
-        <Text style={styles.navIcon}>{item.icon}</Text>
+        <View style={styles.iconContainer}>
+          <Text style={styles.navIcon}>{item.icon}</Text>
+          {badge !== undefined && badge > 0 && (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{badge > 9 ? '9+' : badge}</Text>
+            </View>
+          )}
+        </View>
         <Text
           style={[
             styles.navLabel,
@@ -55,6 +65,14 @@ const NavButton = React.memo(
 export const BottomNav = React.memo(() => {
   const router = useRouter();
   const pathname = usePathname();
+  const quests = useGameStore((state) => state.quests);
+
+  // Calculate unclaimed completed quests
+  const unclaimedQuestCount = useMemo(() => {
+    const dailyUnclaimed = quests.dailyQuests.filter((q) => q.completed && !q.claimed).length;
+    const weeklyUnclaimed = quests.weeklyQuests.filter((q) => q.completed && !q.claimed).length;
+    return dailyUnclaimed + weeklyUnclaimed;
+  }, [quests]);
 
   const handlePress = useCallback(
     (route: string) => {
@@ -67,6 +85,11 @@ export const BottomNav = React.memo(() => {
     [router]
   );
 
+  const getBadge = (route: string): number | undefined => {
+    if (route === '/quests') return unclaimedQuestCount;
+    return undefined;
+  };
+
   return (
     <View style={styles.container}>
       {NAV_ITEMS.map((item) => (
@@ -75,6 +98,7 @@ export const BottomNav = React.memo(() => {
           item={item}
           isActive={pathname === item.route || (pathname === '' && item.route === '/')}
           onPress={() => handlePress(item.route)}
+          badge={getBadge(item.route)}
         />
       ))}
     </View>
@@ -101,9 +125,29 @@ const styles = StyleSheet.create({
   navButtonPressed: {
     opacity: 0.7,
   },
+  iconContainer: {
+    position: 'relative',
+    marginBottom: SPACING.xs,
+  },
   navIcon: {
     fontSize: FONT_SIZES.xl,
-    marginBottom: SPACING.xs,
+  },
+  badge: {
+    position: 'absolute',
+    top: -scale(4),
+    right: -scale(8),
+    backgroundColor: COLORS.hpLow,
+    borderRadius: scale(8),
+    minWidth: scale(16),
+    height: scale(16),
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: scale(4),
+  },
+  badgeText: {
+    fontSize: scale(10),
+    color: COLORS.text,
+    fontWeight: 'bold',
   },
   navLabel: {
     fontSize: FONT_SIZES.sm,
