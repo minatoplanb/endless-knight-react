@@ -1,11 +1,13 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useGameStore } from '../../store/useGameStore';
 import { COLORS, SPACING, FONT_SIZES, LAYOUT, scale } from '../../constants/theme';
 import { formatNumber } from '../../utils/format';
 import { getAreaById } from '../../data/areas';
 
 export const TopBar = React.memo(() => {
+  const router = useRouter();
   const stage = useGameStore((state) => state.stage);
   const gold = useGameStore((state) => state.gold);
   const areaProgress = useGameStore((state) => state.areaProgress);
@@ -14,6 +16,10 @@ export const TopBar = React.memo(() => {
   const areaName = currentArea?.name || '未知區域';
   const currentAreaProgress = areaProgress[stage.currentAreaId];
   const isAreaCleared = currentAreaProgress?.cleared || false;
+
+  const handleSettingsPress = () => {
+    router.push('/settings');
+  };
 
   return (
     <View style={styles.container}>
@@ -31,9 +37,14 @@ export const TopBar = React.memo(() => {
         </View>
       </View>
 
-      <View style={styles.goldInfo}>
-        <Text style={styles.goldIcon}>💰</Text>
-        <Text style={styles.goldAmount}>{formatNumber(gold)}</Text>
+      <View style={styles.rightSection}>
+        <View style={styles.goldInfo}>
+          <Text style={styles.goldIcon}>💰</Text>
+          <Text style={styles.goldAmount}>{formatNumber(gold)}</Text>
+        </View>
+        <TouchableOpacity style={styles.settingsButton} onPress={handleSettingsPress}>
+          <Text style={styles.settingsIcon}>⚙️</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -74,6 +85,10 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginHorizontal: 2,
   },
+  rightSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   goldInfo: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -86,5 +101,12 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZES.xl,
     color: COLORS.textGold,
     fontWeight: 'bold',
+  },
+  settingsButton: {
+    marginLeft: SPACING.md,
+    padding: SPACING.xs,
+  },
+  settingsIcon: {
+    fontSize: FONT_SIZES.lg,
   },
 });
