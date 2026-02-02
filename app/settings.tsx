@@ -1,11 +1,12 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import React, { useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Switch } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS, SPACING, FONT_SIZES, scale } from '../src/constants/theme';
 import { TopBar } from '../src/components/ui/TopBar';
 import { useGameStore } from '../src/store/useGameStore';
 import { SAVE_KEY } from '../src/constants/game';
 import { useRouter } from 'expo-router';
+import { CONSUMABLES, Consumable } from '../src/data/consumables';
 
 interface SettingRowProps {
   icon: string;
@@ -30,10 +31,80 @@ const SettingRow: React.FC<SettingRowProps> = ({ icon, title, description, onPre
   </TouchableOpacity>
 );
 
+// Get healing consumables only
+const getHealingConsumables = (): Consumable[] => {
+  return Object.values(CONSUMABLES).filter((c) => c.effect.type === 'heal');
+};
+
 export default function SettingsPage() {
   const router = useRouter();
   const saveGame = useGameStore((state) => state.saveGame);
   const statistics = useGameStore((state) => state.statistics);
+  const consumables = useGameStore((state) => state.consumables);
+  const autoConsumeEnabled = useGameStore((state) => state.autoConsumeEnabled);
+  const autoConsumeThreshold = useGameStore((state) => state.autoConsumeThreshold);
+  const autoConsumeSlot = useGameStore((state) => state.autoConsumeSlot);
+  const setAutoConsume = useGameStore((state) => state.setAutoConsume);
+
+  const handleAutoConsumeToggle = useCallback((value: boolean) => {
+    setAutoConsume(value);
+  }, [setAutoConsume]);
+
+  const handleSelectConsumable = useCallback(() => {
+    const healingItems = getHealingConsumables();
+    const ownedItems = healingItems.filter((item) =>
+      consumables.some((c) => c.consumableId === item.id && c.amount > 0)
+    );
+
+    if (ownedItems.length === 0) {
+      Alert.alert('沒有回復道具', '你目前沒有任何回復道具。請先製作一些食物或藥水。');
+      return;
+    }
+
+    const options = ownedItems.map((item) => {
+      const stack = consumables.find((c) => c.consumableId === item.id);
+      return {
+        text: `${item.icon} ${item.name} (x${stack?.amount || 0})`,
+        onPress: () => setAutoConsume(autoConsumeEnabled, undefined, item.id),
+      };
+    });
+
+    options.push({
+      text: '清除選擇',
+      onPress: () => setAutoConsume(autoConsumeEnabled, undefined, null),
+    });
+
+    options.push({ text: '取消', onPress: () => {} });
+
+    Alert.alert('選擇自動使用的道具', '選擇要在 HP 低於閾值時自動使用的道具：', options);
+  }, [consumables, autoConsumeEnabled, setAutoConsume]);
+
+  const handleSelectThreshold = useCallback(() => {
+    const thresholds = [
+      { text: '20%', value: 0.2 },
+      { text: '30%', value: 0.3 },
+      { text: '40%', value: 0.4 },
+      { text: '50%', value: 0.5 },
+      { text: '60%', value: 0.6 },
+    ];
+
+    const options = thresholds.map((t) => ({
+      text: t.text,
+      onPress: () => setAutoConsume(autoConsumeEnabled, t.value),
+    }));
+
+    options.push({ text: '取消', onPress: () => {} });
+
+    Alert.alert('選擇 HP 閾值', '當 HP 低於此百分比時自動使用道具：', options);
+  }, [autoConsumeEnabled, setAutoConsume]);
+
+  const getSelectedConsumableName = (): string => {
+    if (!autoConsumeSlot) return '未選擇';
+    const consumable = CONSUMABLES[autoConsumeSlot];
+    if (!consumable) return '未選擇';
+    const stack = consumables.find((c) => c.consumableId === autoConsumeSlot);
+    return `${consumable.icon} ${consumable.name} (x${stack?.amount || 0})`;
+  };
 
   const handleManualSave = async () => {
     await saveGame();
@@ -95,10 +166,50 @@ export default function SettingsPage() {
         </View>
 
         <View style={styles.section}>
+          <Text style={styles.sectionTitle}>自動消耗品</Text>
+          <View style={styles.switchRow}>
+            <View style={styles.switchInfo}>
+              <Text style={styles.settingTitle}>啟用自動吃藥</Text>
+              <Text style={styles.settingDesc}>HP 低於閾值時自動使用回復道具</Text>
+            </View>
+            <Switch
+              value={autoConsumeEnabled}
+              onValueChange={handleAutoConsumeToggle}
+              trackColor={{ false: COLORS.bgLight, true: COLORS.buttonSuccess }}
+              thumbColor={autoConsumeEnabled ? COLORS.text : COLORS.textDim}
+            />
+          </View>
+          <TouchableOpacity
+            style={[styles.settingRow, !autoConsumeEnabled && styles.settingRowDisabled]}
+            onPress={handleSelectThreshold}
+            disabled={!autoConsumeEnabled}
+          >
+            <Text style={styles.settingIcon}>📉</Text>
+            <View style={styles.settingInfo}>
+              <Text style={[styles.settingTitle, !autoConsumeEnabled && styles.settingTitleDisabled]}>HP 閾值</Text>
+              <Text style={styles.settingDesc}>低於 {Math.round(autoConsumeThreshold * 100)}% 時觸發</Text>
+            </View>
+            <Text style={styles.arrow}>›</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.settingRow, !autoConsumeEnabled && styles.settingRowDisabled]}
+            onPress={handleSelectConsumable}
+            disabled={!autoConsumeEnabled}
+          >
+            <Text style={styles.settingIcon}>🍖</Text>
+            <View style={styles.settingInfo}>
+              <Text style={[styles.settingTitle, !autoConsumeEnabled && styles.settingTitleDisabled]}>選擇道具</Text>
+              <Text style={styles.settingDesc}>{getSelectedConsumableName()}</Text>
+            </View>
+            <Text style={styles.arrow}>›</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.section}>
           <Text style={styles.sectionTitle}>版本資訊</Text>
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>遊戲版本</Text>
-            <Text style={styles.infoValue}>v1.1.0</Text>
+            <Text style={styles.infoValue}>v1.2.0</Text>
           </View>
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>擊殺總數</Text>
@@ -175,6 +286,19 @@ const styles = StyleSheet.create({
   settingRowDanger: {
     backgroundColor: 'rgba(255,68,68,0.1)',
   },
+  settingRowDisabled: {
+    opacity: 0.5,
+  },
+  switchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.1)',
+  },
+  switchInfo: {
+    flex: 1,
+  },
   settingIcon: {
     fontSize: FONT_SIZES.lg,
     marginRight: SPACING.md,
@@ -191,6 +315,9 @@ const styles = StyleSheet.create({
   },
   settingTitleDanger: {
     color: COLORS.hpLow,
+  },
+  settingTitleDisabled: {
+    color: COLORS.textDim,
   },
   settingDesc: {
     fontSize: FONT_SIZES.xs,

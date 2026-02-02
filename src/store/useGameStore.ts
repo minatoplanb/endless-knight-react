@@ -357,6 +357,9 @@ const initialState: GameState = {
   lastDailyClaimTime: 0,
   showDailyRewardModal: false,
   quests: createDefaultQuestState(),
+  autoConsumeEnabled: false,
+  autoConsumeThreshold: 0.3, // 30% HP
+  autoConsumeSlot: null,
   damagePopups: [],
   isPlayerDead: false,
   showDeathModal: false,
@@ -390,6 +393,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
     get().checkAchievements();
 
     if (state.isPlayerDead) return;
+
+    // Auto-consume healing items when HP is low
+    get().tickAutoConsume();
 
     if (state.stage.isTraveling) {
       // Traveling to next enemy
@@ -1155,6 +1161,41 @@ export const useGameStore = create<GameStore>((set, get) => ({
       daily: state.quests.dailyQuests,
       weekly: state.quests.weeklyQuests,
     };
+  },
+
+  // Auto-consume
+  setAutoConsume: (enabled: boolean, threshold?: number, slotId?: string | null) => {
+    const state = get();
+    set({
+      autoConsumeEnabled: enabled,
+      autoConsumeThreshold: threshold !== undefined ? threshold : state.autoConsumeThreshold,
+      autoConsumeSlot: slotId !== undefined ? slotId : state.autoConsumeSlot,
+    });
+  },
+
+  tickAutoConsume: () => {
+    const state = get();
+
+    // Check if auto-consume is enabled and configured
+    if (!state.autoConsumeEnabled || !state.autoConsumeSlot) return;
+
+    // Check if player is dead or no enemy
+    if (state.isPlayerDead) return;
+
+    // Check HP threshold
+    const hpPercent = state.player.currentHp / state.player.maxHp;
+    if (hpPercent >= state.autoConsumeThreshold) return;
+
+    // Check if consumable is available
+    const consumableStack = state.consumables.find((c) => c.consumableId === state.autoConsumeSlot);
+    if (!consumableStack || consumableStack.amount <= 0) return;
+
+    // Check if the consumable is a healing item
+    const consumable = getConsumableById(state.autoConsumeSlot);
+    if (!consumable || consumable.effect.type !== 'heal') return;
+
+    // Use the consumable
+    get().useConsumable(state.autoConsumeSlot);
   },
 
   // Equipment
@@ -2185,6 +2226,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
       dailyRewardStreak: state.dailyRewardStreak,
       lastDailyClaimTime: state.lastDailyClaimTime,
       quests: state.quests,
+      autoConsumeEnabled: state.autoConsumeEnabled,
+      autoConsumeThreshold: state.autoConsumeThreshold,
+      autoConsumeSlot: state.autoConsumeSlot,
     };
 
     try {
@@ -2250,6 +2294,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
         dailyRewardStreak: data.dailyRewardStreak || 0,
         lastDailyClaimTime: data.lastDailyClaimTime || 0,
         quests: data.quests || createDefaultQuestState(),
+        autoConsumeEnabled: data.autoConsumeEnabled || false,
+        autoConsumeThreshold: data.autoConsumeThreshold || 0.3,
+        autoConsumeSlot: data.autoConsumeSlot || null,
       });
 
       // Recalculate stats with prestige bonuses

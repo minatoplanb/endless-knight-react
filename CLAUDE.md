@@ -483,6 +483,7 @@ Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 - [x] 裝備販賣功能
 - [x] 裝備強化系統 (資源升級裝備)
 - [x] 任務系統 (每日/每週任務)
+- [x] 自動消耗品系統 (設定頁面配置)
 
 ### 🔲 待完成
 - [ ] AdMob 廣告

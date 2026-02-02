@@ -268,6 +268,11 @@ export interface GameState {
   // Quest System
   quests: QuestStateData;
 
+  // Auto-consume Settings
+  autoConsumeEnabled: boolean;
+  autoConsumeThreshold: number; // HP percentage (0.0-1.0)
+  autoConsumeSlot: string | null; // Consumable ID to auto-use
+
   // UI State
   damagePopups: DamagePopup[];
   isPlayerDead: boolean;
@@ -393,6 +398,10 @@ export interface GameActions {
   claimQuestReward: (questId: string, isDaily: boolean) => boolean;
   getActiveQuests: () => { daily: ActiveQuestData[]; weekly: ActiveQuestData[] };
 
+  // Auto-consume
+  setAutoConsume: (enabled: boolean, threshold?: number, slotId?: string | null) => void;
+  tickAutoConsume: () => void;
+
   // Save/Load
   saveGame: () => Promise<void>;
   loadGame: () => Promise<void>;
@@ -438,4 +447,8 @@ export interface SaveData {
   lastDailyClaimTime?: number;
   // Quest System (added in v1.2.0)
   quests?: QuestStateData;
+  // Auto-consume (added in v1.2.0)
+  autoConsumeEnabled?: boolean;
+  autoConsumeThreshold?: number;
+  autoConsumeSlot?: string | null;
 }
