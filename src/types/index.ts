@@ -241,6 +241,11 @@ export interface GameState {
   unlockedAchievements: string[]; // Array of achievement IDs that have been unlocked
   pendingAchievement: string | null; // Achievement ID to show in notification
 
+  // Daily Rewards
+  dailyRewardStreak: number; // Current consecutive days (1-7)
+  lastDailyClaimTime: number; // Timestamp of last daily reward claim
+  showDailyRewardModal: boolean; // Show daily reward notification
+
   // UI State
   damagePopups: DamagePopup[];
   isPlayerDead: boolean;
@@ -348,6 +353,12 @@ export interface GameActions {
   checkAchievements: () => void;
   dismissAchievement: () => void;
 
+  // Daily Rewards
+  canClaimDailyReward: () => boolean;
+  claimDailyReward: () => void;
+  checkDailyReward: () => void;
+  setShowDailyRewardModal: (show: boolean) => void;
+
   // Save/Load
   saveGame: () => Promise<void>;
   loadGame: () => Promise<void>;
@@ -388,4 +399,7 @@ export interface SaveData {
   statistics?: GameStatistics;
   // Achievements (added in v1.1.0)
   unlockedAchievements?: string[];
+  // Daily Rewards (added in v1.1.0)
+  dailyRewardStreak?: number;
+  lastDailyClaimTime?: number;
 }

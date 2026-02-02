@@ -93,6 +93,11 @@ import {
 } from '../data/gathering';
 import { ALL_RESOURCES, RESOURCE_BASE_CAP } from '../data/resources';
 import { ACHIEVEMENTS, getAchievementById } from '../data/achievements';
+import {
+  getDailyReward,
+  canClaimToday,
+  shouldResetStreak,
+} from '../data/dailyRewards';
 
 const generateId = () => Math.random().toString(36).substring(2, 9);
 
@@ -304,6 +309,10 @@ const initialState: GameState = {
   // Achievements
   unlockedAchievements: [],
   pendingAchievement: null,
+  // Daily Rewards
+  dailyRewardStreak: 0,
+  lastDailyClaimTime: 0,
+  showDailyRewardModal: false,
   damagePopups: [],
   isPlayerDead: false,
   showDeathModal: false,
@@ -866,6 +875,84 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   dismissAchievement: () => {
     set({ pendingAchievement: null });
+  },
+
+  // Daily Rewards
+  canClaimDailyReward: () => {
+    const state = get();
+    return canClaimToday(state.lastDailyClaimTime);
+  },
+
+  claimDailyReward: () => {
+    const state = get();
+    if (!canClaimToday(state.lastDailyClaimTime)) return;
+
+    // Check if streak should reset
+    let newStreak = state.dailyRewardStreak;
+    if (shouldResetStreak(state.lastDailyClaimTime)) {
+      newStreak = 0;
+    }
+
+    // Increment streak (1-7, then loops)
+    newStreak = (newStreak % 7) + 1;
+
+    // Get reward for current streak day
+    const reward = getDailyReward(newStreak);
+
+    // Apply rewards
+    let newGold = state.gold;
+    let newResources = { ...state.gathering.resources };
+
+    for (const r of reward.rewards) {
+      switch (r.type) {
+        case 'gold':
+          newGold += r.amount;
+          break;
+        case 'skill_points':
+          get().addSkillPoints(r.amount);
+          break;
+        case 'prestige_points':
+          set({
+            prestige: {
+              ...state.prestige,
+              prestigePoints: state.prestige.prestigePoints + r.amount,
+              totalPrestigePoints: state.prestige.totalPrestigePoints + r.amount,
+            },
+          });
+          break;
+        case 'resource':
+          if (r.resourceType) {
+            const cap = state.gathering.resourceCaps[r.resourceType];
+            newResources[r.resourceType] = Math.min(
+              newResources[r.resourceType] + r.amount,
+              cap
+            );
+          }
+          break;
+      }
+    }
+
+    set({
+      gold: newGold,
+      gathering: {
+        ...state.gathering,
+        resources: newResources,
+      },
+      dailyRewardStreak: newStreak,
+      lastDailyClaimTime: Date.now(),
+      showDailyRewardModal: false,
+    });
+  },
+
+  checkDailyReward: () => {
+    const state = get();
+    if (canClaimToday(state.lastDailyClaimTime) && !state.showDailyRewardModal) {
+      set({ showDailyRewardModal: true });
+    }
+  },
+
+  setShowDailyRewardModal: (show) => {
+    set({ showDailyRewardModal: show });
   },
 
   // Equipment
@@ -1626,6 +1713,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       skillBuffs: state.skillBuffs,
       statistics: state.statistics,
       unlockedAchievements: state.unlockedAchievements,
+      dailyRewardStreak: state.dailyRewardStreak,
+      lastDailyClaimTime: state.lastDailyClaimTime,
     };
 
     try {
@@ -1687,11 +1776,15 @@ export const useGameStore = create<GameStore>((set, get) => ({
         skillBuffs: data.skillBuffs || [],
         statistics: data.statistics || createDefaultStatistics(),
         unlockedAchievements: data.unlockedAchievements || [],
+        dailyRewardStreak: data.dailyRewardStreak || 0,
+        lastDailyClaimTime: data.lastDailyClaimTime || 0,
       });
 
       // Recalculate stats with prestige bonuses
       get().recalculateStats();
       get().calculateOfflineReward();
+      // Check for daily reward availability
+      get().checkDailyReward();
     } catch (error) {
       console.error('Failed to load game:', error);
     }
