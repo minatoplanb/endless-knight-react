@@ -246,8 +246,17 @@ export const BattleView = React.memo(() => {
                 </View>
               </>
             ) : (
-              <View style={styles.emptyEnemy}>
-                <Text style={styles.emptyText}>...</Text>
+              <View style={styles.travelingContainer}>
+                <Text style={styles.travelingIcon}>🚶</Text>
+                <Text style={styles.travelingText}>移動中...</Text>
+                <View style={styles.travelingProgressContainer}>
+                  <View
+                    style={[
+                      styles.travelingProgressBar,
+                      { width: `${stage.travelProgress}%` },
+                    ]}
+                  />
+                </View>
               </View>
             )}
           </View>
@@ -329,16 +338,34 @@ const styles = StyleSheet.create({
     color: COLORS.textDim,
     fontWeight: 'bold',
   },
-  emptyEnemy: {
-    width: scale(80),
-    height: scale(80),
-    justifyContent: 'center',
+  travelingContainer: {
+    width: scale(100),
     alignItems: 'center',
-    opacity: 0.3,
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    borderRadius: scale(12),
+    padding: SPACING.md,
   },
-  emptyText: {
+  travelingIcon: {
     fontSize: FONT_SIZES.xxl,
+    marginBottom: SPACING.xs,
+  },
+  travelingText: {
+    fontSize: FONT_SIZES.sm,
     color: COLORS.textDim,
+    marginBottom: SPACING.sm,
+  },
+  travelingProgressContainer: {
+    width: '100%',
+    height: scale(4),
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: scale(2),
+    overflow: 'hidden',
+  },
+  travelingProgressBar: {
+    height: '100%',
+    backgroundColor: COLORS.textGold,
+    borderRadius: scale(2),
   },
   popupContainer: {
     ...StyleSheet.absoluteFillObject,
