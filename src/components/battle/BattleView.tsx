@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, ImageBackground, ImageSourcePropType } from 'react-native';
+import { View, Text, StyleSheet, Image, ImageSourcePropType, Platform } from 'react-native';
 import { useGameStore } from '../../store/useGameStore';
 import { COLORS, SPACING, FONT_SIZES, scale, SCREEN } from '../../constants/theme';
 import { HealthBar } from './HealthBar';
@@ -97,13 +97,14 @@ export const BattleView = React.memo(() => {
   const isBoss = enemy?.isBoss || false;
 
   return (
-    <ImageBackground
-      source={currentBackground}
-      style={styles.container}
-      imageStyle={styles.backgroundImage}
-      resizeMode="cover"
-    >
-      {/* Battle area */}
+    <View style={styles.container}>
+      {/* Background Image - absolute positioned */}
+      <Image
+        source={currentBackground}
+        style={styles.backgroundImage}
+        resizeMode="cover"
+      />
+      {/* Battle area - on top of background */}
       <View style={styles.battleArea}>
           {/* Player */}
           <View style={styles.characterContainer}>
@@ -182,16 +183,24 @@ export const BattleView = React.memo(() => {
           </View>
         ))}
       </View>
-    </ImageBackground>
+    </View>
   );
 });
 
 const styles = StyleSheet.create({
   container: {
     flex: 3,
+    backgroundColor: '#1a3a1a', // Fallback forest color
+    position: 'relative',
   },
   backgroundImage: {
-    // ImageBackground imageStyle
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100%',
+    height: '100%',
   },
   battleArea: {
     flex: 1,
@@ -199,6 +208,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     alignItems: 'center',
     paddingHorizontal: SPACING.xl,
+    zIndex: 1,
   },
   characterContainer: {
     alignItems: 'center',
