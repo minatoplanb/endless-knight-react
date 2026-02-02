@@ -6,6 +6,7 @@ import { HealthBar } from './HealthBar';
 import { CharacterSprite } from './CharacterSprite';
 import { DamagePopupItem } from './DamagePopup';
 import { getAreaById, AreaEnemy } from '../../data/areas';
+import { COMBAT_STYLES, hasAdvantage, CombatStyle } from '../../data/combatStyles';
 
 // Background images
 const BACKGROUNDS: { [key: string]: ImageSourcePropType } = {
@@ -55,12 +56,93 @@ const findEnemySpriteByName = (areaId: string, enemyName: string): string => {
   return nameToSprite[enemyName] || 'slime_green';
 };
 
+// Combat Style Effectiveness Indicator
+const CombatStyleIndicator = React.memo<{ playerStyle: CombatStyle; enemyStyle: CombatStyle }>(
+  ({ playerStyle, enemyStyle }) => {
+    const playerInfo = COMBAT_STYLES[playerStyle];
+    const enemyInfo = COMBAT_STYLES[enemyStyle];
+    const playerHasAdvantage = hasAdvantage(playerStyle, enemyStyle);
+    const enemyHasAdvantage = hasAdvantage(enemyStyle, playerStyle);
+
+    let statusText = '中立';
+    let statusColor = COLORS.textDim;
+    let statusIcon = '⚖️';
+
+    if (playerHasAdvantage) {
+      statusText = '優勢 +50%';
+      statusColor = '#22c55e';
+      statusIcon = '⬆️';
+    } else if (enemyHasAdvantage) {
+      statusText = '劣勢 -50%';
+      statusColor = '#ef4444';
+      statusIcon = '⬇️';
+    }
+
+    return (
+      <View style={styleIndicatorStyles.container}>
+        <View style={styleIndicatorStyles.row}>
+          <Text style={[styleIndicatorStyles.icon, { color: playerInfo.color }]}>
+            {playerInfo.icon}
+          </Text>
+          <Text style={styleIndicatorStyles.vs}>vs</Text>
+          <Text style={[styleIndicatorStyles.icon, { color: enemyInfo.color }]}>
+            {enemyInfo.icon}
+          </Text>
+        </View>
+        <View style={[styleIndicatorStyles.statusBadge, { backgroundColor: statusColor + '30' }]}>
+          <Text style={[styleIndicatorStyles.statusText, { color: statusColor }]}>
+            {statusIcon} {statusText}
+          </Text>
+        </View>
+      </View>
+    );
+  }
+);
+
+const styleIndicatorStyles = StyleSheet.create({
+  container: {
+    position: 'absolute',
+    top: SPACING.sm,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs,
+    borderRadius: scale(12),
+  },
+  icon: {
+    fontSize: FONT_SIZES.md,
+  },
+  vs: {
+    fontSize: FONT_SIZES.xs,
+    color: COLORS.textDim,
+    marginHorizontal: SPACING.sm,
+  },
+  statusBadge: {
+    marginTop: SPACING.xs,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: 2,
+    borderRadius: scale(8),
+  },
+  statusText: {
+    fontSize: FONT_SIZES.xs,
+    fontWeight: 'bold',
+  },
+});
+
 export const BattleView = React.memo(() => {
   const player = useGameStore((state) => state.player);
   const enemy = useGameStore((state) => state.currentEnemy);
   const damagePopups = useGameStore((state) => state.damagePopups);
   const removeDamagePopup = useGameStore((state) => state.removeDamagePopup);
   const stage = useGameStore((state) => state.stage);
+  const playerCombatStyle = useGameStore((state) => state.combatStyle);
 
   const [playerHurt, setPlayerHurt] = useState(false);
   const [enemyHurt, setEnemyHurt] = useState(false);
@@ -104,6 +186,15 @@ export const BattleView = React.memo(() => {
         style={styles.backgroundImage}
         resizeMode="cover"
       />
+
+      {/* Combat Style Indicator */}
+      {enemy && !stage.isTraveling && (
+        <CombatStyleIndicator
+          playerStyle={playerCombatStyle}
+          enemyStyle={enemy.combatStyle}
+        />
+      )}
+
       {/* Battle area - on top of background */}
       <View style={styles.battleArea}>
           {/* Player */}
