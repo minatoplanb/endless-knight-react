@@ -42,8 +42,11 @@ export const TopBar = React.memo(() => {
           <Text style={styles.goldIcon}>💰</Text>
           <Text style={styles.goldAmount}>{formatNumber(gold)}</Text>
         </View>
-        <TouchableOpacity style={styles.settingsButton} onPress={handleSettingsPress}>
-          <Text style={styles.settingsIcon}>⚙️</Text>
+        <TouchableOpacity style={styles.iconButton} onPress={() => router.push('/achievements')}>
+          <Text style={styles.iconButtonText}>🏆</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.iconButton} onPress={handleSettingsPress}>
+          <Text style={styles.iconButtonText}>⚙️</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -102,11 +105,11 @@ const styles = StyleSheet.create({
     color: COLORS.textGold,
     fontWeight: 'bold',
   },
-  settingsButton: {
-    marginLeft: SPACING.md,
+  iconButton: {
+    marginLeft: SPACING.sm,
     padding: SPACING.xs,
   },
-  settingsIcon: {
+  iconButtonText: {
     fontSize: FONT_SIZES.lg,
   },
 });
