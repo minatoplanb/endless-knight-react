@@ -62,10 +62,19 @@ const ConsumableButton = React.memo<{
   );
 });
 
+// Map skill buff types to icons
+const SKILL_BUFF_ICONS: Record<string, string> = {
+  defense: '🛡️',
+  attack_speed: '⚡',
+  crit: '🎯',
+  gold: '💰',
+};
+
 export const ActionBar = React.memo(() => {
   const skills = useGameStore((state) => state.skills);
   const consumables = useGameStore((state) => state.consumables);
   const activeBuffs = useGameStore((state) => state.activeBuffs);
+  const skillBuffs = useGameStore((state) => state.skillBuffs);
   const useSkill = useGameStore((state) => state.useSkill);
   const useConsumable = useGameStore((state) => state.useConsumable);
   const isSkillReady = useGameStore((state) => state.isSkillReady);
