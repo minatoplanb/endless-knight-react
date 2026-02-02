@@ -11,14 +11,21 @@ export const TopBar = React.memo(() => {
   const stage = useGameStore((state) => state.stage);
   const gold = useGameStore((state) => state.gold);
   const areaProgress = useGameStore((state) => state.areaProgress);
+  const canClaimDaily = useGameStore((state) => state.canClaimDailyReward);
+  const setShowDailyReward = useGameStore((state) => state.setShowDailyRewardModal);
 
   const currentArea = getAreaById(stage.currentAreaId);
   const areaName = currentArea?.name || '未知區域';
   const currentAreaProgress = areaProgress[stage.currentAreaId];
   const isAreaCleared = currentAreaProgress?.cleared || false;
+  const dailyAvailable = canClaimDaily();
 
   const handleSettingsPress = () => {
     router.push('/settings');
+  };
+
+  const handleDailyPress = () => {
+    setShowDailyReward(true);
   };
 
   return (
@@ -42,6 +49,11 @@ export const TopBar = React.memo(() => {
           <Text style={styles.goldIcon}>💰</Text>
           <Text style={styles.goldAmount}>{formatNumber(gold)}</Text>
         </View>
+        {dailyAvailable && (
+          <TouchableOpacity style={[styles.iconButton, styles.dailyButton]} onPress={handleDailyPress}>
+            <Text style={styles.iconButtonText}>🎁</Text>
+          </TouchableOpacity>
+        )}
         <TouchableOpacity style={styles.iconButton} onPress={() => router.push('/achievements')}>
           <Text style={styles.iconButtonText}>🏆</Text>
         </TouchableOpacity>
@@ -108,6 +120,10 @@ const styles = StyleSheet.create({
   iconButton: {
     marginLeft: SPACING.sm,
     padding: SPACING.xs,
+  },
+  dailyButton: {
+    backgroundColor: 'rgba(255,215,0,0.2)',
+    borderRadius: scale(4),
   },
   iconButtonText: {
     fontSize: FONT_SIZES.lg,
