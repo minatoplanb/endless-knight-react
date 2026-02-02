@@ -8,8 +8,8 @@
 
 | 設定 | 值 |
 |------|---|
-| 語言 | 繁體中文（程式碼和註解用英文）|
-| 版本 | v0.1.0（React Native 重寫）|
+| 語言 | **繁體中文**（Claude 回覆一律用繁體中文，程式碼和註解用英文）|
+| 版本 | v0.3.0 |
 | 框架 | React Native + Expo SDK 52 |
 | 狀態管理 | Zustand |
 | 存檔 | @react-native-async-storage/async-storage |
@@ -280,35 +280,51 @@ export const COLORS = {
 
 ## Git 規範
 
-### Commit 訊息
+### Commit 訊息格式
 ```
-feat: 新功能
-fix: 修復 bug
-refactor: 重構
-style: 樣式調整
-docs: 文件更新
+<type>: <簡短描述>
+
+<詳細說明（可選）>
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 ```
 
-### 每次 commit 後
-1. 更新 CHANGELOG.md
-2. 如果是新功能，更新此文件的「已完成」清單
+**類型：**
+- `feat`: 新功能
+- `fix`: 修復 bug
+- `refactor`: 重構
+- `style`: 樣式調整
+- `docs`: 文件更新
+- `chore`: 雜項（設定、依賴等）
+
+### 每次 commit 時必須
+1. **給予適當的 commit 名稱** - 清楚描述變更內容
+2. **更新 CHANGELOG.md** - 記錄版本歷史和變更項目
+3. **更新 CLAUDE.md** - 如果有新功能，更新「進度追蹤」和相關文件
+4. **更新版本號** - 重大功能更新時在 CLAUDE.md 基本設定中更新版本
+
+### 版本號規則
+- `v0.X.0` - 新增重大功能（如裝備系統、技能系統）
+- `v0.X.Y` - 小功能或修復
 
 ---
 
 ## 進度追蹤
 
 ### ✅ 已完成
-- [ ] 專案初始化 (Expo + TypeScript)
-- [ ] 基本佈局 (SafeArea + TopBar + BattleView + UpgradePanel)
-- [ ] 遊戲引擎 (GameEngine.ts + setInterval)
-- [ ] 戰鬥系統 (CombatSystem.ts)
-- [ ] 血條 + 傷害飄字
-- [ ] 升級面板
-- [ ] 存檔系統 (AsyncStorage)
-- [ ] 離線獎勵
+- [x] 專案初始化 (Expo + TypeScript)
+- [x] 基本佈局 (SafeArea + TopBar + BattleView + UpgradePanel)
+- [x] 遊戲引擎 (GameEngine.ts + setInterval)
+- [x] 戰鬥系統 (CombatSystem.ts)
+- [x] 血條 + 傷害飄字
+- [x] 升級面板
+- [x] 存檔系統 (AsyncStorage)
+- [x] 離線獎勵
+- [x] 裝備系統 (掉落、背包、裝備欄位)
+- [x] 背包升級功能 (50→250 格，10 級)
+- [x] 底部導航 (戰鬥/裝備/轉生)
 
 ### 🔲 待完成
-- [ ] 裝備系統
 - [ ] 技能系統
 - [ ] 轉生系統
 - [ ] 多區域/Boss
