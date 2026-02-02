@@ -398,6 +398,27 @@ export const COLORS = {
 
 ---
 
+## Claude 工作流程
+
+### 開發規則
+1. **大改動前先 commit** - 開始重大功能或重構前，先把目前狀態 commit
+2. **測試變更** - 每次修改後執行 `npx tsc --noEmit` 確認編譯通過
+3. **更新文件** - 每次 commit 都要更新 CHANGELOG.md 和相關文件
+4. **不刪除實體檔案** - 除非使用者明確要求，否則不要刪除任何檔案
+5. **適當的 commit 名稱** - commit 訊息要清楚描述變更內容
+
+### 工作順序
+```
+1. Commit 目前狀態（如有未 commit 的變更）
+2. 實作功能
+3. 測試：npx tsc --noEmit
+4. 更新文件：CHANGELOG.md、CLAUDE.md
+5. Commit + Push
+6. 繼續下一個功能
+```
+
+---
+
 ## Git 規範
 
 ### Commit 訊息格式
