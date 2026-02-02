@@ -199,6 +199,24 @@ export interface GameStatistics {
   itemsCrafted: number;
   consumablesUsed: number;
   skillsUsed: number;
+  // Added for quest tracking
+  enhancementsAttempted: number;
+  resourcesCollected: Record<ResourceType, number>;
+}
+
+// Quest System Types
+export interface ActiveQuestData {
+  questId: string;
+  progress: number;
+  completed: boolean;
+  claimed: boolean;
+}
+
+export interface QuestStateData {
+  dailyQuests: ActiveQuestData[];
+  weeklyQuests: ActiveQuestData[];
+  lastDailyReset: number;
+  lastWeeklyReset: number;
 }
 
 export interface GameState {
@@ -246,6 +264,9 @@ export interface GameState {
   dailyRewardStreak: number; // Current consecutive days (1-7)
   lastDailyClaimTime: number; // Timestamp of last daily reward claim
   showDailyRewardModal: boolean; // Show daily reward notification
+
+  // Quest System
+  quests: QuestStateData;
 
   // UI State
   damagePopups: DamagePopup[];
@@ -366,6 +387,12 @@ export interface GameActions {
   checkDailyReward: () => void;
   setShowDailyRewardModal: (show: boolean) => void;
 
+  // Quest System
+  checkQuestReset: () => void;
+  updateQuestProgress: (objectiveType: string, amount: number, resourceType?: ResourceType) => void;
+  claimQuestReward: (questId: string, isDaily: boolean) => boolean;
+  getActiveQuests: () => { daily: ActiveQuestData[]; weekly: ActiveQuestData[] };
+
   // Save/Load
   saveGame: () => Promise<void>;
   loadGame: () => Promise<void>;
@@ -409,4 +436,6 @@ export interface SaveData {
   // Daily Rewards (added in v1.1.0)
   dailyRewardStreak?: number;
   lastDailyClaimTime?: number;
+  // Quest System (added in v1.2.0)
+  quests?: QuestStateData;
 }

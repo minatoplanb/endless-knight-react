@@ -26,6 +26,8 @@ import {
   SkillBuff,
   SkillId,
   GameStatistics,
+  QuestStateData,
+  ActiveQuestData,
 } from '../types';
 import {
   getCombatMultiplier,
@@ -100,6 +102,19 @@ import {
 } from '../data/gathering';
 import { ALL_RESOURCES, RESOURCE_BASE_CAP } from '../data/resources';
 import { ACHIEVEMENTS, getAchievementById } from '../data/achievements';
+import {
+  getQuestById,
+  selectRandomQuests,
+  createDefaultQuestState,
+  createActiveQuest,
+  needsDailyReset,
+  needsWeeklyReset,
+  DAILY_QUEST_POOL,
+  WEEKLY_QUEST_POOL,
+  DAILY_QUEST_COUNT,
+  WEEKLY_QUEST_COUNT,
+  QuestObjectiveType,
+} from '../data/quests';
 import {
   getDailyReward,
   canClaimToday,
@@ -259,6 +274,8 @@ const createDefaultStatistics = (): GameStatistics => ({
   itemsCrafted: 0,
   consumablesUsed: 0,
   skillsUsed: 0,
+  enhancementsAttempted: 0,
+  resourcesCollected: { ore: 0, wood: 0, fish: 0, herb: 0 },
 });
 
 // Create default gathering state
@@ -339,6 +356,7 @@ const initialState: GameState = {
   dailyRewardStreak: 0,
   lastDailyClaimTime: 0,
   showDailyRewardModal: false,
+  quests: createDefaultQuestState(),
   damagePopups: [],
   isPlayerDead: false,
   showDeathModal: false,
@@ -684,6 +702,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (isActualBoss) {
       get().addSkillPoints(1);
     }
+
+    // Update quest progress
+    get().updateQuestProgress('kill_enemies', 1);
+    if (isActualBoss) {
+      get().updateQuestProgress('kill_bosses', 1);
+    }
+    get().updateQuestProgress('earn_gold', goldEarned);
   },
 
   playerDie: () => {
@@ -844,7 +869,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
       switch (achievement.condition.type) {
         case 'stat_threshold': {
           const statKey = achievement.condition.stat as keyof typeof statistics;
-          if (statKey && statistics[statKey] >= achievement.condition.threshold) {
+          const statValue = statistics[statKey];
+          // Only compare if it's a number (not resourcesCollected which is a Record)
+          if (statKey && typeof statValue === 'number' && statValue >= achievement.condition.threshold) {
             unlocked = true;
           }
           break;
@@ -979,6 +1006,155 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   setShowDailyRewardModal: (show) => {
     set({ showDailyRewardModal: show });
+  },
+
+  // Quest System
+  checkQuestReset: () => {
+    const state = get();
+    const now = Date.now();
+    let needsUpdate = false;
+    let newDailyQuests = state.quests.dailyQuests;
+    let newWeeklyQuests = state.quests.weeklyQuests;
+    let newLastDailyReset = state.quests.lastDailyReset;
+    let newLastWeeklyReset = state.quests.lastWeeklyReset;
+
+    // Check daily reset
+    if (needsDailyReset(state.quests.lastDailyReset) || state.quests.dailyQuests.length === 0) {
+      const selectedDaily = selectRandomQuests(DAILY_QUEST_POOL, DAILY_QUEST_COUNT);
+      newDailyQuests = selectedDaily.map(createActiveQuest);
+      newLastDailyReset = now;
+      needsUpdate = true;
+    }
+
+    // Check weekly reset
+    if (needsWeeklyReset(state.quests.lastWeeklyReset) || state.quests.weeklyQuests.length === 0) {
+      const selectedWeekly = selectRandomQuests(WEEKLY_QUEST_POOL, WEEKLY_QUEST_COUNT);
+      newWeeklyQuests = selectedWeekly.map(createActiveQuest);
+      newLastWeeklyReset = now;
+      needsUpdate = true;
+    }
+
+    if (needsUpdate) {
+      set({
+        quests: {
+          dailyQuests: newDailyQuests,
+          weeklyQuests: newWeeklyQuests,
+          lastDailyReset: newLastDailyReset,
+          lastWeeklyReset: newLastWeeklyReset,
+        },
+      });
+    }
+  },
+
+  updateQuestProgress: (objectiveType: string, amount: number, resourceType?: ResourceType) => {
+    const state = get();
+
+    const updateQuests = (quests: ActiveQuestData[]): ActiveQuestData[] => {
+      return quests.map((quest) => {
+        if (quest.completed || quest.claimed) return quest;
+
+        const questDef = getQuestById(quest.questId);
+        if (!questDef) return quest;
+
+        // Check if this quest matches the objective type
+        if (questDef.objective.type !== objectiveType) return quest;
+
+        // For resource collection, also check resource type
+        if (objectiveType === 'collect_resource' && questDef.objective.resourceType !== resourceType) {
+          return quest;
+        }
+
+        const newProgress = quest.progress + amount;
+        const completed = newProgress >= questDef.objective.target;
+
+        return {
+          ...quest,
+          progress: Math.min(newProgress, questDef.objective.target),
+          completed,
+        };
+      });
+    };
+
+    set({
+      quests: {
+        ...state.quests,
+        dailyQuests: updateQuests(state.quests.dailyQuests),
+        weeklyQuests: updateQuests(state.quests.weeklyQuests),
+      },
+    });
+  },
+
+  claimQuestReward: (questId: string, isDaily: boolean) => {
+    const state = get();
+    const questList = isDaily ? state.quests.dailyQuests : state.quests.weeklyQuests;
+    const quest = questList.find((q) => q.questId === questId);
+
+    if (!quest || !quest.completed || quest.claimed) return false;
+
+    const questDef = getQuestById(questId);
+    if (!questDef) return false;
+
+    // Apply rewards
+    let newGold = state.gold;
+    const newResources = { ...state.gathering.resources };
+    let newSkillPoints = state.skills.skillPoints;
+    let newPrestigePoints = state.prestige.prestigePoints;
+
+    if (questDef.reward.gold) {
+      newGold += questDef.reward.gold;
+    }
+
+    if (questDef.reward.resources) {
+      for (const [resource, amount] of Object.entries(questDef.reward.resources)) {
+        newResources[resource as ResourceType] = Math.min(
+          newResources[resource as ResourceType] + amount,
+          state.gathering.resourceCaps[resource as ResourceType]
+        );
+      }
+    }
+
+    if (questDef.reward.skillPoints) {
+      newSkillPoints += questDef.reward.skillPoints;
+    }
+
+    if (questDef.reward.prestigePoints) {
+      newPrestigePoints += questDef.reward.prestigePoints;
+    }
+
+    // Mark quest as claimed
+    const updatedQuests = questList.map((q) =>
+      q.questId === questId ? { ...q, claimed: true } : q
+    );
+
+    set({
+      gold: newGold,
+      gathering: {
+        ...state.gathering,
+        resources: newResources,
+      },
+      skills: {
+        ...state.skills,
+        skillPoints: newSkillPoints,
+      },
+      prestige: {
+        ...state.prestige,
+        prestigePoints: newPrestigePoints,
+      },
+      quests: {
+        ...state.quests,
+        [isDaily ? 'dailyQuests' : 'weeklyQuests']: updatedQuests,
+      },
+    });
+
+    return true;
+  },
+
+  getActiveQuests: () => {
+    const state = get();
+    return {
+      daily: state.quests.dailyQuests,
+      weekly: state.quests.weeklyQuests,
+    };
   },
 
   // Equipment
@@ -1186,6 +1362,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
           ...state.gathering,
           resources: newResources,
         },
+        statistics: {
+          ...state.statistics,
+          enhancementsAttempted: state.statistics.enhancementsAttempted + 1,
+        },
       });
       return { success: false, message: `強化失敗！(成功率 ${Math.round(successRate * 100)}%)` };
     }
@@ -1235,6 +1415,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (isEquipped) {
       get().recalculateStats();
     }
+
+    // Update quest progress for successful enhancement
+    get().updateQuestProgress('enhance_equipment', 1);
+
+    // Update enhancement statistics
+    set((s) => ({
+      statistics: {
+        ...s.statistics,
+        enhancementsAttempted: s.statistics.enhancementsAttempted + 1,
+      },
+    }));
 
     return {
       success: true,
@@ -1374,12 +1565,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
   // Gathering System
   tickGathering: () => {
     const state = get();
-    const { gathering } = state;
+    const { gathering, statistics } = state;
     const now = Date.now();
 
     // Calculate progress for each worker based on tick interval
     const newWorkers = { ...gathering.workers };
     const newResources = { ...gathering.resources };
+    const resourcesGainedThisTick: Partial<Record<ResourceType, number>> = {};
     let hasChanges = false;
 
     for (const workerType of ALL_WORKERS) {
@@ -1391,15 +1583,18 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
       if (newProgress >= 1) {
         // Gathered a resource
-        const resourceType = workerType === 'miner' ? 'ore' :
+        const resourceType: ResourceType = workerType === 'miner' ? 'ore' :
                             workerType === 'lumberjack' ? 'wood' :
                             workerType === 'fisher' ? 'fish' : 'herb';
         const cap = gathering.resourceCaps[resourceType];
         const resourcesGained = Math.floor(newProgress);
-        const newAmount = Math.min(cap, newResources[resourceType] + resourcesGained);
+        const oldAmount = newResources[resourceType];
+        const newAmount = Math.min(cap, oldAmount + resourcesGained);
+        const actualGained = newAmount - oldAmount;
 
-        if (newAmount !== newResources[resourceType]) {
+        if (actualGained > 0) {
           newResources[resourceType] = newAmount;
+          resourcesGainedThisTick[resourceType] = (resourcesGainedThisTick[resourceType] || 0) + actualGained;
           hasChanges = true;
         }
 
@@ -1417,6 +1612,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     if (hasChanges || Object.values(newWorkers).some((w, i) =>
       w.progress !== Object.values(gathering.workers)[i].progress)) {
+
+      // Update statistics for resources collected
+      const newResourcesCollected = { ...statistics.resourcesCollected };
+      for (const [resource, amount] of Object.entries(resourcesGainedThisTick)) {
+        newResourcesCollected[resource as ResourceType] += amount;
+      }
+
       set({
         gathering: {
           ...gathering,
@@ -1424,7 +1626,16 @@ export const useGameStore = create<GameStore>((set, get) => ({
           resources: newResources,
           lastGatherTime: now,
         },
+        statistics: {
+          ...statistics,
+          resourcesCollected: newResourcesCollected,
+        },
       });
+
+      // Update quest progress for resource collection
+      for (const [resource, amount] of Object.entries(resourcesGainedThisTick)) {
+        get().updateQuestProgress('collect_resource', amount, resource as ResourceType);
+      }
     }
   },
 
@@ -1545,6 +1756,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
       },
     });
 
+    // Update quest progress
+    get().updateQuestProgress('craft_items', 1);
+
     return true;
   },
 
@@ -1635,6 +1849,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
         consumablesUsed: state.statistics.consumablesUsed + 1,
       },
     });
+
+    // Update quest progress
+    get().updateQuestProgress('use_consumables', 1);
 
     return true;
   },
@@ -1868,6 +2085,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
       },
     });
 
+    // Update quest progress
+    get().updateQuestProgress('use_skills', 1);
+
     return true;
   },
 
@@ -1964,6 +2184,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       unlockedAchievements: state.unlockedAchievements,
       dailyRewardStreak: state.dailyRewardStreak,
       lastDailyClaimTime: state.lastDailyClaimTime,
+      quests: state.quests,
     };
 
     try {
@@ -2028,6 +2249,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         unlockedAchievements: data.unlockedAchievements || [],
         dailyRewardStreak: data.dailyRewardStreak || 0,
         lastDailyClaimTime: data.lastDailyClaimTime || 0,
+        quests: data.quests || createDefaultQuestState(),
       });
 
       // Recalculate stats with prestige bonuses
@@ -2035,6 +2257,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       get().calculateOfflineReward();
       // Check for daily reward availability
       get().checkDailyReward();
+      // Check for quest reset
+      get().checkQuestReset();
     } catch (error) {
       console.error('Failed to load game:', error);
     }
