@@ -62,6 +62,9 @@ const InventoryItem = React.memo(
         <Text style={[styles.levelBadge, { backgroundColor: rarityColor }]}>
           {item.level}
         </Text>
+        {item.enhancementLevel > 0 && (
+          <Text style={styles.enhanceBadge}>+{item.enhancementLevel}</Text>
+        )}
       </Pressable>
     );
   }
@@ -165,6 +168,7 @@ export const InventoryGrid = React.memo(() => {
           showEquip
           showSell
           showDiscard
+          showEnhance
           sellPrice={getSellPrice(selectedItem)}
           compareWith={currentEquipped}
         />
@@ -233,6 +237,19 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZES.xs,
     color: COLORS.bg,
     fontWeight: 'bold',
+    overflow: 'hidden',
+  },
+  enhanceBadge: {
+    position: 'absolute',
+    top: scale(2),
+    left: scale(2),
+    paddingHorizontal: scale(3),
+    paddingVertical: scale(1),
+    borderRadius: scale(4),
+    fontSize: FONT_SIZES.xs,
+    color: COLORS.bg,
+    fontWeight: 'bold',
+    backgroundColor: COLORS.textGold,
     overflow: 'hidden',
   },
   emptyContainer: {

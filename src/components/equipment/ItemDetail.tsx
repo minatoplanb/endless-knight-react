@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, Pressable, Image } from 'react-native';
 import { COLORS, SPACING, FONT_SIZES, scale } from '../../constants/theme';
 import { Equipment, Rarity } from '../../types';
 import { RARITY_NAMES, SLOT_NAMES } from '../../data/equipment';
+import { EnhancePanel } from './EnhancePanel';
 
 const RARITY_COLORS: Record<Rarity, string> = {
   common: COLORS.common,
@@ -58,6 +59,7 @@ interface ItemDetailProps {
   showUnequip?: boolean;
   showDiscard?: boolean;
   showSell?: boolean;
+  showEnhance?: boolean;
   sellPrice?: number;
   compareWith?: Equipment | null;
 }
@@ -74,11 +76,23 @@ export const ItemDetail = React.memo(
     showUnequip,
     showDiscard,
     showSell,
+    showEnhance,
     sellPrice,
     compareWith,
   }: ItemDetailProps) => {
+    const [showEnhancePanel, setShowEnhancePanel] = useState(false);
     const rarityColor = RARITY_COLORS[item.rarity];
     const iconSource = EQUIPMENT_ICONS[item.icon];
+    const enhancementLevel = item.enhancementLevel || 0;
+
+    const toggleEnhancePanel = useCallback(() => {
+      setShowEnhancePanel((prev) => !prev);
+    }, []);
+
+    // Display name with enhancement level
+    const displayName = enhancementLevel > 0
+      ? `${item.name} +${enhancementLevel}`
+      : item.name;
 
     return (
       <View style={[styles.container, { borderColor: rarityColor }]}>
@@ -87,7 +101,7 @@ export const ItemDetail = React.memo(
             <Image source={iconSource} style={styles.icon} resizeMode="contain" />
           )}
           <View style={styles.headerInfo}>
-            <Text style={[styles.name, { color: rarityColor }]}>{item.name}</Text>
+            <Text style={[styles.name, { color: rarityColor }]}>{displayName}</Text>
             <Text style={styles.meta}>
               {RARITY_NAMES[item.rarity]} {SLOT_NAMES[item.slot]} Lv.{item.level}
             </Text>
@@ -183,7 +197,26 @@ export const ItemDetail = React.memo(
               <Text style={styles.buttonText}>丟棄</Text>
             </Pressable>
           )}
+          {showEnhance && (
+            <Pressable
+              style={({ pressed }) => [
+                styles.button,
+                styles.enhanceButton,
+                showEnhancePanel && styles.enhanceButtonActive,
+                pressed && styles.buttonPressed,
+              ]}
+              onPress={toggleEnhancePanel}
+            >
+              <Text style={styles.buttonText}>
+                {showEnhancePanel ? '收起' : '強化'}
+              </Text>
+            </Pressable>
+          )}
         </View>
+
+        {showEnhance && showEnhancePanel && (
+          <EnhancePanel item={item} />
+        )}
       </View>
     );
   }
@@ -263,6 +296,12 @@ const styles = StyleSheet.create({
   },
   discardButton: {
     backgroundColor: COLORS.buttonDanger,
+  },
+  enhanceButton: {
+    backgroundColor: COLORS.textGold,
+  },
+  enhanceButtonActive: {
+    backgroundColor: '#8B6914', // Darker gold when active
   },
   buttonPressed: {
     opacity: 0.8,

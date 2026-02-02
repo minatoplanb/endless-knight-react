@@ -137,6 +137,7 @@ export const LootSystem = {
       stats: finalStats,
       icon: baseEquip.icon,
       level: itemLevel,
+      enhancementLevel: 0,
     };
   },
 

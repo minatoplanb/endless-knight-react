@@ -87,6 +87,12 @@ import {
   getCraftedEquipment,
 } from '../data/equipment';
 import {
+  getEnhancementCost as getEnhancementCostFromData,
+  isMaxEnhancement,
+  MAX_ENHANCEMENT_LEVEL,
+  getEnhancementSuccessRate,
+} from '../data/enhancement';
+import {
   ALL_WORKERS,
   WORKER_MAX_LEVEL,
   getWorkerInterval,
@@ -178,6 +184,25 @@ const createDefaultAreaProgress = (): AreaProgress => ({
   highestStage: 1,
   cleared: false,
 });
+
+// Migration helper: ensure equipment has enhancementLevel
+const migrateEquipment = (item: Equipment): Equipment => {
+  if (item.enhancementLevel === undefined) {
+    return { ...item, enhancementLevel: 0 };
+  }
+  return item;
+};
+
+const migrateEquipmentSlots = (slots: EquipmentSlots): EquipmentSlots => {
+  return {
+    weapon: slots.weapon ? migrateEquipment(slots.weapon) : null,
+    helmet: slots.helmet ? migrateEquipment(slots.helmet) : null,
+    armor: slots.armor ? migrateEquipment(slots.armor) : null,
+    shield: slots.shield ? migrateEquipment(slots.shield) : null,
+    ring: slots.ring ? migrateEquipment(slots.ring) : null,
+    amulet: slots.amulet ? migrateEquipment(slots.amulet) : null,
+  };
+};
 
 const emptyEquipmentSlots: EquipmentSlots = {
   weapon: null,
@@ -1047,6 +1072,176 @@ export const useGameStore = create<GameStore>((set, get) => ({
     return true;
   },
 
+  // Equipment Enhancement
+  getEnhancementCost: (itemId: string) => {
+    const state = get();
+    // Check inventory first, then equipped items
+    let item = state.inventory.find((i) => i.id === itemId);
+    if (!item) {
+      // Check equipped items
+      for (const slot of Object.keys(state.equipment) as EquipmentSlotType[]) {
+        const equipped = state.equipment[slot];
+        if (equipped?.id === itemId) {
+          item = equipped;
+          break;
+        }
+      }
+    }
+    if (!item) return null;
+
+    return getEnhancementCostFromData(item.slot, item.rarity, item.enhancementLevel || 0);
+  },
+
+  canEnhanceEquipment: (itemId: string) => {
+    const state = get();
+    // Find the item
+    let item = state.inventory.find((i) => i.id === itemId);
+    if (!item) {
+      for (const slot of Object.keys(state.equipment) as EquipmentSlotType[]) {
+        const equipped = state.equipment[slot];
+        if (equipped?.id === itemId) {
+          item = equipped;
+          break;
+        }
+      }
+    }
+    if (!item) return false;
+
+    // Check if at max level
+    if (isMaxEnhancement(item.rarity, item.enhancementLevel || 0)) return false;
+
+    // Check if can afford
+    const cost = getEnhancementCostFromData(item.slot, item.rarity, item.enhancementLevel || 0);
+    if (state.gold < cost.gold) return false;
+
+    for (const [resource, amount] of Object.entries(cost.resources)) {
+      if (state.gathering.resources[resource as ResourceType] < amount) {
+        return false;
+      }
+    }
+
+    return true;
+  },
+
+  enhanceEquipment: (itemId: string) => {
+    const state = get();
+
+    // Find the item (in inventory or equipped)
+    let item = state.inventory.find((i) => i.id === itemId);
+    let isEquipped = false;
+    let equippedSlot: EquipmentSlotType | null = null;
+
+    if (!item) {
+      for (const slot of Object.keys(state.equipment) as EquipmentSlotType[]) {
+        const equipped = state.equipment[slot];
+        if (equipped?.id === itemId) {
+          item = equipped;
+          isEquipped = true;
+          equippedSlot = slot;
+          break;
+        }
+      }
+    }
+
+    if (!item) {
+      return { success: false, message: '找不到裝備' };
+    }
+
+    const currentLevel = item.enhancementLevel || 0;
+
+    // Check max level
+    if (isMaxEnhancement(item.rarity, currentLevel)) {
+      return { success: false, message: '已達最大強化等級' };
+    }
+
+    // Calculate and check costs
+    const cost = getEnhancementCostFromData(item.slot, item.rarity, currentLevel);
+
+    if (state.gold < cost.gold) {
+      return { success: false, message: '金幣不足' };
+    }
+
+    for (const [resource, amount] of Object.entries(cost.resources)) {
+      if (state.gathering.resources[resource as ResourceType] < amount) {
+        return { success: false, message: `${resource} 不足` };
+      }
+    }
+
+    // Deduct costs
+    const newResources = { ...state.gathering.resources };
+    for (const [resource, amount] of Object.entries(cost.resources)) {
+      newResources[resource as ResourceType] -= amount;
+    }
+
+    // Roll for success
+    const successRate = getEnhancementSuccessRate(currentLevel);
+    const roll = Math.random();
+    const isSuccess = roll < successRate;
+
+    if (!isSuccess) {
+      // Enhancement failed - still consume resources
+      set({
+        gold: state.gold - cost.gold,
+        gathering: {
+          ...state.gathering,
+          resources: newResources,
+        },
+      });
+      return { success: false, message: `強化失敗！(成功率 ${Math.round(successRate * 100)}%)` };
+    }
+
+    // Enhancement succeeded - upgrade the item
+    const enhancedItem: Equipment = {
+      ...item,
+      enhancementLevel: currentLevel + 1,
+      // Update stats based on enhancement
+      stats: {
+        ...item.stats,
+        atk: item.stats.atk ? Math.floor(item.stats.atk * 1.1) : undefined,
+        def: item.stats.def ? Math.floor(item.stats.def * 1.1) : undefined,
+        maxHp: item.stats.maxHp ? Math.floor(item.stats.maxHp * 1.1) : undefined,
+        attackSpeed: item.stats.attackSpeed ? item.stats.attackSpeed + 0.01 : undefined,
+        critChance: item.stats.critChance ? item.stats.critChance + 0.01 : undefined,
+        critMultiplier: item.stats.critMultiplier ? item.stats.critMultiplier + 0.05 : undefined,
+      },
+    };
+
+    if (isEquipped && equippedSlot) {
+      // Update equipped item
+      set({
+        gold: state.gold - cost.gold,
+        gathering: {
+          ...state.gathering,
+          resources: newResources,
+        },
+        equipment: {
+          ...state.equipment,
+          [equippedSlot]: enhancedItem,
+        },
+      });
+    } else {
+      // Update inventory item
+      set({
+        gold: state.gold - cost.gold,
+        gathering: {
+          ...state.gathering,
+          resources: newResources,
+        },
+        inventory: state.inventory.map((i) => (i.id === itemId ? enhancedItem : i)),
+      });
+    }
+
+    // Recalculate stats if equipped
+    if (isEquipped) {
+      get().recalculateStats();
+    }
+
+    return {
+      success: true,
+      message: `強化成功！+${currentLevel + 1} (成功率 ${Math.round(successRate * 100)}%)`
+    };
+  },
+
   getEquipmentBonus: (): EquipmentStats => {
     const state = get();
     const bonus: EquipmentStats = {
@@ -1330,6 +1525,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
           stats: { ...baseEquip.baseStats },
           icon: baseEquip.icon,
           level: Math.max(1, Math.floor(state.stage.currentStage / 10)),
+          enhancementLevel: 0,
         };
 
         // Add to inventory
@@ -1816,8 +2012,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
         },
         currentEnemy: null,
         lastOnlineTime: data.lastOnlineTime,
-        equipment: data.equipment || emptyEquipmentSlots,
-        inventory: data.inventory || [],
+        // Migrate equipment to include enhancementLevel (added in v1.2.0)
+        equipment: migrateEquipmentSlots(data.equipment || emptyEquipmentSlots),
+        inventory: (data.inventory || []).map(migrateEquipment),
         backpackLevel: data.backpackLevel || 0,
         unlockedAreas: savedUnlockedAreas,
         areaProgress: savedAreaProgress,

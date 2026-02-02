@@ -94,6 +94,7 @@ export const EquipmentPanel = React.memo(() => {
           onUnequip={handleUnequip}
           onClose={handleCloseDetail}
           showUnequip
+          showEnhance
         />
       )}
     </View>

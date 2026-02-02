@@ -87,6 +87,7 @@ export interface Equipment {
   stats: EquipmentStats;
   icon: string;
   level: number; // Item level affects stats
+  enhancementLevel: number; // Enhancement level (0 = not enhanced)
 }
 
 export interface EquipmentSlots {
@@ -303,6 +304,11 @@ export interface GameActions {
   dismissLootToast: () => void;
   collectLoot: () => void;
   discardLoot: () => void;
+
+  // Equipment Enhancement
+  enhanceEquipment: (itemId: string) => { success: boolean; message: string };
+  canEnhanceEquipment: (itemId: string) => boolean;
+  getEnhancementCost: (itemId: string) => { resources: Partial<Record<ResourceType, number>>; gold: number } | null;
 
   // Backpack upgrade
   buyBackpackUpgrade: () => boolean;

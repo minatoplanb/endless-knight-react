@@ -61,12 +61,17 @@ export const EquipmentSlot = React.memo(
           </View>
         )}
         {item && (
-          <Text
-            style={[styles.levelBadge, { backgroundColor: rarityColor }]}
-            numberOfLines={1}
-          >
-            {item.level}
-          </Text>
+          <>
+            <Text
+              style={[styles.levelBadge, { backgroundColor: rarityColor }]}
+              numberOfLines={1}
+            >
+              {item.level}
+            </Text>
+            {item.enhancementLevel > 0 && (
+              <Text style={styles.enhanceBadge}>+{item.enhancementLevel}</Text>
+            )}
+          </>
         )}
       </Pressable>
     );
@@ -114,6 +119,19 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZES.xs,
     color: COLORS.bg,
     fontWeight: 'bold',
+    overflow: 'hidden',
+  },
+  enhanceBadge: {
+    position: 'absolute',
+    top: scale(2),
+    left: scale(2),
+    paddingHorizontal: scale(3),
+    paddingVertical: scale(1),
+    borderRadius: scale(4),
+    fontSize: FONT_SIZES.xs,
+    color: COLORS.bg,
+    fontWeight: 'bold',
+    backgroundColor: COLORS.textGold,
     overflow: 'hidden',
   },
 });
