@@ -4,6 +4,7 @@ import { COLORS } from '../src/constants/theme';
 import { TopBar } from '../src/components/ui/TopBar';
 import { AreaSelector } from '../src/components/ui/AreaSelector';
 import { CombatStyleSelector } from '../src/components/ui/CombatStyleSelector';
+import { ConsumableSlots } from '../src/components/ui/ConsumableSlots';
 import { BattleView } from '../src/components/battle/BattleView';
 import { StageProgress } from '../src/components/battle/StageProgress';
 import { UpgradePanel } from '../src/components/ui/UpgradePanel';
@@ -16,6 +17,7 @@ export default function GameScreen() {
       <TopBar />
       <AreaSelector />
       <CombatStyleSelector />
+      <ConsumableSlots />
       <BattleView />
       <StageProgress />
       <UpgradePanel />
