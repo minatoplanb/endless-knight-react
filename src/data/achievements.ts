@@ -1,6 +1,6 @@
 // Achievement System - Track player milestones and reward them
 
-export type AchievementCategory = 'combat' | 'progression' | 'economy' | 'gathering' | 'crafting' | 'skills';
+export type AchievementCategory = 'combat' | 'progression' | 'economy' | 'gathering' | 'crafting' | 'skills' | 'equipment';
 
 export interface Achievement {
   id: string;
@@ -365,6 +365,44 @@ export const ACHIEVEMENTS: Achievement[] = [
     condition: { type: 'stat_threshold', stat: 'totalPlayTimeMs', threshold: 360000000 },
     reward: { type: 'prestige_points', amount: 20 },
   },
+
+  // ========== EQUIPMENT ACHIEVEMENTS ==========
+  {
+    id: 'enhance_first',
+    name: '初次強化',
+    description: '強化裝備 1 次',
+    icon: '✨',
+    category: 'equipment',
+    condition: { type: 'stat_threshold', stat: 'enhancementsAttempted', threshold: 1 },
+    reward: { type: 'gold', amount: 200 },
+  },
+  {
+    id: 'enhance_10',
+    name: '強化新手',
+    description: '強化裝備 10 次',
+    icon: '⬆️',
+    category: 'equipment',
+    condition: { type: 'stat_threshold', stat: 'enhancementsAttempted', threshold: 10 },
+    reward: { type: 'gold', amount: 500 },
+  },
+  {
+    id: 'enhance_50',
+    name: '強化專家',
+    description: '強化裝備 50 次',
+    icon: '🔥',
+    category: 'equipment',
+    condition: { type: 'stat_threshold', stat: 'enhancementsAttempted', threshold: 50 },
+    reward: { type: 'skill_points', amount: 3 },
+  },
+  {
+    id: 'enhance_200',
+    name: '強化大師',
+    description: '強化裝備 200 次',
+    icon: '💎',
+    category: 'equipment',
+    condition: { type: 'stat_threshold', stat: 'enhancementsAttempted', threshold: 200 },
+    reward: { type: 'prestige_points', amount: 5 },
+  },
 ];
 
 // ========== HELPER FUNCTIONS ==========
@@ -384,6 +422,7 @@ export const CATEGORY_NAMES: Record<AchievementCategory, string> = {
   gathering: '採集',
   crafting: '製作',
   skills: '技能',
+  equipment: '裝備',
 };
 
 export const CATEGORY_ICONS: Record<AchievementCategory, string> = {
@@ -393,4 +432,5 @@ export const CATEGORY_ICONS: Record<AchievementCategory, string> = {
   gathering: '⛏️',
   crafting: '🔨',
   skills: '✨',
+  equipment: '🛡️',
 };

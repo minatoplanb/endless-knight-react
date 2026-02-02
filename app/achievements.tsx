@@ -95,6 +95,7 @@ export default function AchievementsPage() {
     gathering: [],
     crafting: [],
     skills: [],
+    equipment: [],
   };
 
   for (const achievement of ACHIEVEMENTS) {
