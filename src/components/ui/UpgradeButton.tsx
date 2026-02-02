@@ -10,6 +10,7 @@ interface UpgradeButtonProps {
   cost: number;
   currentGold: number;
   onPress: (type: UpgradeType) => void;
+  isRecommended?: boolean;
 }
 
 const UPGRADE_INFO: Record<UpgradeType, { label: string; icon: string; description: string }> = {
@@ -21,7 +22,7 @@ const UPGRADE_INFO: Record<UpgradeType, { label: string; icon: string; descripti
 };
 
 export const UpgradeButton = React.memo<UpgradeButtonProps>(
-  ({ type, level, cost, currentGold, onPress }) => {
+  ({ type, level, cost, currentGold, onPress, isRecommended }) => {
     const canAfford = currentGold >= cost;
     const info = UPGRADE_INFO[type];
 
@@ -38,6 +39,7 @@ export const UpgradeButton = React.memo<UpgradeButtonProps>(
           styles.container,
           !canAfford && styles.disabled,
           pressed && canAfford && styles.pressed,
+          isRecommended && canAfford && styles.recommended,
         ]}
       >
         <View style={styles.iconContainer}>
@@ -48,6 +50,11 @@ export const UpgradeButton = React.memo<UpgradeButtonProps>(
           <View style={styles.headerRow}>
             <Text style={styles.label}>{info.label}</Text>
             <Text style={styles.level}>Lv.{level}</Text>
+            {isRecommended && (
+              <View style={styles.recommendedBadge}>
+                <Text style={styles.recommendedText}>推薦</Text>
+              </View>
+            )}
           </View>
           <Text style={styles.description}>{info.description}</Text>
         </View>
@@ -79,6 +86,22 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.8,
     transform: [{ scale: 0.98 }],
+  },
+  recommended: {
+    borderWidth: 2,
+    borderColor: '#22c55e',
+  },
+  recommendedBadge: {
+    backgroundColor: '#22c55e',
+    paddingHorizontal: SPACING.xs,
+    paddingVertical: 1,
+    borderRadius: scale(4),
+    marginLeft: SPACING.xs,
+  },
+  recommendedText: {
+    fontSize: FONT_SIZES.xs - 2,
+    color: '#fff',
+    fontWeight: 'bold',
   },
   iconContainer: {
     width: scale(40),

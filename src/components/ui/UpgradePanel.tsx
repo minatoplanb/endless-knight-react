@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { useGameStore } from '../../store/useGameStore';
 import { COLORS, SPACING, FONT_SIZES, scale } from '../../constants/theme';
@@ -7,11 +7,51 @@ import { UpgradeType } from '../../types';
 
 const UPGRADE_TYPES: UpgradeType[] = ['hp', 'atk', 'def', 'speed', 'crit'];
 
+// Calculate which upgrade is most recommended based on player stats
+const getRecommendedUpgrade = (
+  upgrades: Record<UpgradeType, number>,
+  playerHp: number,
+  maxHp: number,
+  deaths: number
+): UpgradeType => {
+  // If player dies a lot, recommend HP or DEF
+  if (deaths > 5 && playerHp < maxHp * 0.5) {
+    // If HP level is lower than DEF level, recommend HP
+    return upgrades.hp <= upgrades.def ? 'hp' : 'def';
+  }
+
+  // For early game (low total upgrades), recommend ATK for faster progression
+  const totalLevels = Object.values(upgrades).reduce((a, b) => a + b, 0);
+  if (totalLevels < 20) {
+    return 'atk';
+  }
+
+  // Find the lowest upgraded stat (most value from upgrade)
+  let lowestType: UpgradeType = 'atk';
+  let lowestLevel = upgrades.atk;
+
+  for (const type of UPGRADE_TYPES) {
+    if (upgrades[type] < lowestLevel) {
+      lowestLevel = upgrades[type];
+      lowestType = type;
+    }
+  }
+
+  return lowestType;
+};
+
 export const UpgradePanel = React.memo(() => {
   const gold = useGameStore((state) => state.gold);
   const upgrades = useGameStore((state) => state.upgrades);
+  const player = useGameStore((state) => state.player);
+  const statistics = useGameStore((state) => state.statistics);
   const buyUpgrade = useGameStore((state) => state.buyUpgrade);
   const getUpgradeCost = useGameStore((state) => state.getUpgradeCost);
+
+  const recommendedUpgrade = useMemo(
+    () => getRecommendedUpgrade(upgrades, player.currentHp, player.maxHp, statistics.totalDeaths),
+    [upgrades, player.currentHp, player.maxHp, statistics.totalDeaths]
+  );
 
   const handleUpgrade = useCallback((type: UpgradeType) => {
     buyUpgrade(type);
@@ -33,6 +73,7 @@ export const UpgradePanel = React.memo(() => {
             cost={getUpgradeCost(type)}
             currentGold={gold}
             onPress={handleUpgrade}
+            isRecommended={type === recommendedUpgrade}
           />
         ))}
       </ScrollView>
