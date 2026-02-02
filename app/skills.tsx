@@ -1,6 +1,7 @@
 import React, { useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { COLORS, FONT_SIZES, SPACING, scale } from '../src/constants/theme';
+import { TopBar } from '../src/components/ui/TopBar';
 import { useGameStore } from '../src/store/useGameStore';
 import { SKILLS, ALL_SKILL_IDS, getSkillDescription, getSkillUpgradeCost } from '../src/data/skills';
 import type { SkillId } from '../src/types';
@@ -85,21 +86,24 @@ export default function SkillsScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>技能</Text>
-        <Text style={styles.pointsText}>
-          技能點: {skills.skillPoints}
-        </Text>
-      </View>
-
-      <Text style={styles.hint}>
-        擊敗 Boss 獲得技能點
-      </Text>
-
+      <TopBar />
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
       >
+        <View style={styles.header}>
+          <Text style={styles.title}>✨ 技能</Text>
+          <View style={styles.pointsBadge}>
+            <Text style={styles.pointsText}>
+              SP: {skills.skillPoints}
+            </Text>
+          </View>
+        </View>
+
+        <Text style={styles.hint}>
+          擊敗 Boss 獲得技能點
+        </Text>
+
         {ALL_SKILL_IDS.map((skillId) => (
           <SkillCard key={skillId} skillId={skillId} />
         ))}
@@ -112,21 +116,28 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.bg,
-    padding: SPACING.md,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: SPACING.sm,
+    marginBottom: SPACING.md,
   },
   title: {
     fontSize: FONT_SIZES.xl,
     fontWeight: 'bold',
     color: COLORS.text,
   },
+  pointsBadge: {
+    backgroundColor: COLORS.panel,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs,
+    borderRadius: scale(8),
+    borderWidth: 1,
+    borderColor: COLORS.textGold,
+  },
   pointsText: {
-    fontSize: FONT_SIZES.lg,
+    fontSize: FONT_SIZES.md,
     color: COLORS.textGold,
     fontWeight: 'bold',
   },
@@ -140,6 +151,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
+    padding: SPACING.md,
     paddingBottom: SPACING.xl,
   },
   skillCard: {
