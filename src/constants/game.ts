@@ -28,8 +28,8 @@ export const ENEMY_SCALING = {
 };
 
 // Upgrade costs and effects
-export const UPGRADE_BASE_COST = 100;
-export const UPGRADE_COST_MULTIPLIER = 1.5;
+export const UPGRADE_BASE_COST = 50; // Reduced from 100
+export const UPGRADE_COST_MULTIPLIER = 1.35; // Reduced from 1.5 for smoother progression
 
 export const UPGRADE_EFFECTS = {
   hp: { perLevel: 15, stat: 'maxHp' as const },

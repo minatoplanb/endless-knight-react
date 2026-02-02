@@ -11,7 +11,21 @@ import {
   EquipmentSlotType,
   EquipmentStats,
   EquipmentSlots,
+  Area,
+  AreaProgress,
+  WorkerType,
+  Worker,
+  GatheringState,
+  ResourceType,
 } from '../types';
+import {
+  AREAS,
+  getAreaById,
+  getStartingArea,
+  getNextArea,
+  selectRandomEnemy,
+  calculateEnemyStats,
+} from '../data/areas';
 import {
   PLAYER_BASE,
   UPGRADE_BASE_COST,
@@ -31,9 +45,35 @@ import {
   BACKPACK_UPGRADE_BASE_COST,
   BACKPACK_UPGRADE_COST_MULTIPLIER,
 } from '../data/equipment';
+import {
+  ALL_WORKERS,
+  WORKER_MAX_LEVEL,
+  getWorkerInterval,
+  getWorkerUpgradeCost as getWorkerUpgradeCostFromData,
+} from '../data/gathering';
+import { ALL_RESOURCES, RESOURCE_BASE_CAP } from '../data/resources';
 
 const generateId = () => Math.random().toString(36).substring(2, 9);
 
+// Get starting area
+const startingArea = getStartingArea();
+
+// Create enemy from area data
+const createEnemyFromArea = (area: Area, stageInArea: number): Enemy => {
+  const areaEnemy = selectRandomEnemy(area);
+  const stats = calculateEnemyStats(areaEnemy, stageInArea);
+
+  return {
+    id: generateId(),
+    name: areaEnemy.name,
+    maxHp: stats.hp,
+    currentHp: stats.hp,
+    atk: stats.atk,
+    goldDrop: stats.gold,
+  };
+};
+
+// Legacy function for backward compatibility (fallback)
 const createEnemy = (stage: number): Enemy => {
   const stageMultiplier = stage - 1;
   return {
@@ -46,6 +86,13 @@ const createEnemy = (stage: number): Enemy => {
   };
 };
 
+// Default area progress
+const createDefaultAreaProgress = (): AreaProgress => ({
+  currentStage: 1,
+  highestStage: 1,
+  cleared: false,
+});
+
 const emptyEquipmentSlots: EquipmentSlots = {
   weapon: null,
   helmet: null,
@@ -53,6 +100,32 @@ const emptyEquipmentSlots: EquipmentSlots = {
   shield: null,
   ring: null,
   amulet: null,
+};
+
+// Create default gathering state
+const createDefaultGatheringState = (): GatheringState => {
+  const workers: Record<WorkerType, Worker> = {} as Record<WorkerType, Worker>;
+  for (const workerType of ALL_WORKERS) {
+    workers[workerType] = {
+      type: workerType,
+      level: 1,
+      progress: 0,
+    };
+  }
+
+  const resources: Record<ResourceType, number> = {} as Record<ResourceType, number>;
+  const resourceCaps: Record<ResourceType, number> = {} as Record<ResourceType, number>;
+  for (const resourceType of ALL_RESOURCES) {
+    resources[resourceType] = 0;
+    resourceCaps[resourceType] = RESOURCE_BASE_CAP;
+  }
+
+  return {
+    workers,
+    resources,
+    resourceCaps,
+    lastGatherTime: Date.now(),
+  };
 };
 
 const initialState: GameState = {
@@ -79,14 +152,23 @@ const initialState: GameState = {
     enemiesKilled: 0,
     travelProgress: 0,
     isTraveling: true,
+    currentAreaId: startingArea.id,
   },
   currentEnemy: null,
+  // Area system
+  unlockedAreas: [startingArea.id],
+  areaProgress: {
+    [startingArea.id]: createDefaultAreaProgress(),
+  },
+  // Gathering system
+  gathering: createDefaultGatheringState(),
   damagePopups: [],
   isPlayerDead: false,
   showDeathModal: false,
   showOfflineModal: false,
   showLootModal: false,
   offlineReward: 0,
+  offlineGathering: null,
   lastSaveTime: Date.now(),
   lastOnlineTime: Date.now(),
   isRunning: false,
@@ -98,7 +180,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
   // Game flow
   tick: () => {
     const state = get();
-    if (!state.isRunning || state.isPlayerDead) return;
+    if (!state.isRunning) return;
+
+    // Always tick gathering (even when dead)
+    get().tickGathering();
+
+    if (state.isPlayerDead) return;
 
     if (state.stage.isTraveling) {
       // Traveling to next enemy
@@ -106,14 +193,19 @@ export const useGameStore = create<GameStore>((set, get) => ({
       const newProgress = state.stage.travelProgress + progressPerTick;
 
       if (newProgress >= 100) {
-        // Arrived at enemy
+        // Arrived at enemy - use area-based enemy creation
+        const currentArea = getAreaById(state.stage.currentAreaId);
+        const enemy = currentArea
+          ? createEnemyFromArea(currentArea, state.stage.currentStage)
+          : createEnemy(state.stage.currentStage);
+
         set({
           stage: {
             ...state.stage,
             travelProgress: 100,
             isTraveling: false,
           },
-          currentEnemy: createEnemy(state.stage.currentStage),
+          currentEnemy: enemy,
         });
       } else {
         set({
@@ -226,8 +318,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   spawnEnemy: () => {
     const state = get();
+    const currentArea = getAreaById(state.stage.currentAreaId);
+    const enemy = currentArea
+      ? createEnemyFromArea(currentArea, state.stage.currentStage)
+      : createEnemy(state.stage.currentStage);
+
     set({
-      currentEnemy: createEnemy(state.stage.currentStage),
+      currentEnemy: enemy,
       stage: {
         ...state.stage,
         isTraveling: false,
@@ -240,13 +337,22 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const state = get();
     if (!state.currentEnemy) return;
 
+    const currentArea = getAreaById(state.stage.currentAreaId);
     const goldEarned = state.currentEnemy.goldDrop;
     const newEnemiesKilled = state.stage.enemiesKilled + 1;
 
     let newStage = state.stage.currentStage;
     const isBoss = newEnemiesKilled >= STAGE.enemiesPerStage;
+    let areaCleared = false;
+
     if (isBoss) {
-      newStage++;
+      // Check if this was the last stage of the area
+      if (currentArea && newStage >= currentArea.stages) {
+        areaCleared = true;
+        // Stay at the last stage when area is cleared
+      } else {
+        newStage++;
+      }
     }
 
     // Check for loot drop
@@ -280,6 +386,29 @@ export const useGameStore = create<GameStore>((set, get) => ({
       showLoot = true;
     }
 
+    // Update area progress
+    const currentAreaId = state.stage.currentAreaId;
+    const currentAreaProgress = state.areaProgress[currentAreaId] || createDefaultAreaProgress();
+    const newAreaProgress = {
+      ...state.areaProgress,
+      [currentAreaId]: {
+        currentStage: newStage,
+        highestStage: Math.max(currentAreaProgress.highestStage, newStage),
+        cleared: areaCleared || currentAreaProgress.cleared,
+      },
+    };
+
+    // Unlock next area if this area was cleared
+    let newUnlockedAreas = [...state.unlockedAreas];
+    if (areaCleared && currentArea) {
+      const nextArea = getNextArea(currentAreaId);
+      if (nextArea && !newUnlockedAreas.includes(nextArea.id)) {
+        newUnlockedAreas.push(nextArea.id);
+        // Initialize progress for newly unlocked area
+        newAreaProgress[nextArea.id] = createDefaultAreaProgress();
+      }
+    }
+
     set({
       gold: state.gold + goldEarned,
       totalGoldEarned: state.totalGoldEarned + goldEarned,
@@ -292,6 +421,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
         travelProgress: 0,
         isTraveling: true,
       },
+      areaProgress: newAreaProgress,
+      unlockedAreas: newUnlockedAreas,
       equipment: newEquipment,
       inventory: newInventory,
       ...(loot ? { pendingLoot: loot, showLootModal: showLoot } : {}),
@@ -532,6 +663,59 @@ export const useGameStore = create<GameStore>((set, get) => ({
     get().dismissLootToast();
   },
 
+  // Area System
+  changeArea: (areaId: string) => {
+    const state = get();
+
+    // Can only change to unlocked areas
+    if (!state.unlockedAreas.includes(areaId)) {
+      return;
+    }
+
+    const area = getAreaById(areaId);
+    if (!area) return;
+
+    // Get or create progress for the new area
+    const areaProgress = state.areaProgress[areaId] || createDefaultAreaProgress();
+
+    set({
+      stage: {
+        ...state.stage,
+        currentAreaId: areaId,
+        currentStage: areaProgress.currentStage,
+        enemiesKilled: 0,
+        travelProgress: 0,
+        isTraveling: true,
+      },
+      currentEnemy: null,
+      areaProgress: {
+        ...state.areaProgress,
+        [areaId]: areaProgress,
+      },
+    });
+  },
+
+  unlockArea: (areaId: string) => {
+    const state = get();
+    if (state.unlockedAreas.includes(areaId)) return;
+
+    const area = getAreaById(areaId);
+    if (!area) return;
+
+    set({
+      unlockedAreas: [...state.unlockedAreas, areaId],
+      areaProgress: {
+        ...state.areaProgress,
+        [areaId]: createDefaultAreaProgress(),
+      },
+    });
+  },
+
+  getCurrentArea: (): Area | undefined => {
+    const state = get();
+    return getAreaById(state.stage.currentAreaId);
+  },
+
   // Backpack upgrade
   getBackpackCapacity: () => {
     const level = get().backpackLevel;
@@ -557,11 +741,122 @@ export const useGameStore = create<GameStore>((set, get) => ({
     return true;
   },
 
+  // Gathering System
+  tickGathering: () => {
+    const state = get();
+    const { gathering } = state;
+    const now = Date.now();
+
+    // Calculate progress for each worker based on tick interval
+    const newWorkers = { ...gathering.workers };
+    const newResources = { ...gathering.resources };
+    let hasChanges = false;
+
+    for (const workerType of ALL_WORKERS) {
+      const worker = newWorkers[workerType];
+      const interval = getWorkerInterval(worker.level);
+      // Progress per tick: TICK_INTERVAL ms / (interval seconds * 1000 ms)
+      const progressPerTick = TICK_INTERVAL / (interval * 1000);
+      const newProgress = worker.progress + progressPerTick;
+
+      if (newProgress >= 1) {
+        // Gathered a resource
+        const resourceType = workerType === 'miner' ? 'ore' :
+                            workerType === 'lumberjack' ? 'wood' :
+                            workerType === 'fisher' ? 'fish' : 'herb';
+        const cap = gathering.resourceCaps[resourceType];
+        const resourcesGained = Math.floor(newProgress);
+        const newAmount = Math.min(cap, newResources[resourceType] + resourcesGained);
+
+        if (newAmount !== newResources[resourceType]) {
+          newResources[resourceType] = newAmount;
+          hasChanges = true;
+        }
+
+        newWorkers[workerType] = {
+          ...worker,
+          progress: newProgress - resourcesGained,
+        };
+      } else {
+        newWorkers[workerType] = {
+          ...worker,
+          progress: newProgress,
+        };
+      }
+    }
+
+    if (hasChanges || Object.values(newWorkers).some((w, i) =>
+      w.progress !== Object.values(gathering.workers)[i].progress)) {
+      set({
+        gathering: {
+          ...gathering,
+          workers: newWorkers,
+          resources: newResources,
+          lastGatherTime: now,
+        },
+      });
+    }
+  },
+
+  upgradeWorker: (workerType: WorkerType) => {
+    const state = get();
+    const worker = state.gathering.workers[workerType];
+    const cost = getWorkerUpgradeCostFromData(worker.level);
+
+    if (worker.level >= WORKER_MAX_LEVEL) return false;
+    if (state.gold < cost) return false;
+
+    set({
+      gold: state.gold - cost,
+      gathering: {
+        ...state.gathering,
+        workers: {
+          ...state.gathering.workers,
+          [workerType]: {
+            ...worker,
+            level: worker.level + 1,
+          },
+        },
+      },
+    });
+    return true;
+  },
+
+  getWorkerUpgradeCost: (workerType: WorkerType) => {
+    const state = get();
+    const worker = state.gathering.workers[workerType];
+    return getWorkerUpgradeCostFromData(worker.level);
+  },
+
+  collectOfflineGathering: () => {
+    const state = get();
+    if (!state.offlineGathering) return;
+
+    const newResources = { ...state.gathering.resources };
+    for (const resourceType of ALL_RESOURCES) {
+      const amount = state.offlineGathering[resourceType] || 0;
+      const cap = state.gathering.resourceCaps[resourceType];
+      newResources[resourceType] = Math.min(cap, newResources[resourceType] + amount);
+    }
+
+    set({
+      gathering: {
+        ...state.gathering,
+        resources: newResources,
+      },
+      offlineGathering: null,
+    });
+  },
+
+  dismissOfflineGathering: () => {
+    set({ offlineGathering: null });
+  },
+
   // Save/Load
   saveGame: async () => {
     const state = get();
     const saveData: SaveData = {
-      version: '0.3.0',
+      version: '0.5.0',
       player: state.player,
       upgrades: state.upgrades,
       gold: state.gold,
@@ -571,6 +866,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
       equipment: state.equipment,
       inventory: state.inventory,
       backpackLevel: state.backpackLevel,
+      unlockedAreas: state.unlockedAreas,
+      areaProgress: state.areaProgress,
+      gathering: state.gathering,
     };
 
     try {
@@ -588,6 +886,23 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
       const data: SaveData = JSON.parse(savedData);
 
+      // Handle migration from older saves without area system
+      const defaultAreaId = startingArea.id;
+      const savedAreaId = data.stage?.currentAreaId || defaultAreaId;
+      const savedUnlockedAreas = data.unlockedAreas || [defaultAreaId];
+      const savedAreaProgress = data.areaProgress || {
+        [defaultAreaId]: {
+          currentStage: data.stage?.currentStage || 1,
+          highestStage: data.stage?.highestStage || 1,
+          cleared: false,
+        },
+      };
+
+      // Handle migration from older saves without gathering system
+      const savedGathering = data.gathering || createDefaultGatheringState();
+      // Update lastGatherTime to saved lastOnlineTime for offline calculation
+      savedGathering.lastGatherTime = data.lastOnlineTime;
+
       set({
         player: data.player,
         upgrades: data.upgrades,
@@ -595,6 +910,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         totalGoldEarned: data.totalGoldEarned,
         stage: {
           ...data.stage,
+          currentAreaId: savedAreaId,
           travelProgress: 0,
           isTraveling: true,
         },
@@ -603,6 +919,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
         equipment: data.equipment || emptyEquipmentSlots,
         inventory: data.inventory || [],
         backpackLevel: data.backpackLevel || 0,
+        unlockedAreas: savedUnlockedAreas,
+        areaProgress: savedAreaProgress,
+        gathering: savedGathering,
       });
 
       get().calculateOfflineReward();
@@ -616,7 +935,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const offlineSeconds = (Date.now() - state.lastOnlineTime) / 1000;
 
     if (offlineSeconds < OFFLINE.minOfflineSeconds) {
-      set({ offlineReward: 0 });
+      set({ offlineReward: 0, offlineGathering: null });
       return;
     }
 
@@ -626,9 +945,32 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const enemiesPerSecond = 0.5; // Approximate kills per second
     const offlineGold = Math.floor(goldPerEnemy * enemiesPerSecond * cappedSeconds * OFFLINE.efficiency);
 
-    if (offlineGold > 0) {
+    // Calculate offline gathering rewards
+    const offlineGathering: Record<ResourceType, number> = {
+      ore: 0,
+      wood: 0,
+      fish: 0,
+      herb: 0,
+    };
+
+    for (const workerType of ALL_WORKERS) {
+      const worker = state.gathering.workers[workerType];
+      const interval = getWorkerInterval(worker.level);
+      // Resources gathered = offline seconds / interval (full efficiency for gathering)
+      const resourcesGathered = Math.floor(cappedSeconds / interval);
+      const resourceType: ResourceType =
+        workerType === 'miner' ? 'ore' :
+        workerType === 'lumberjack' ? 'wood' :
+        workerType === 'fisher' ? 'fish' : 'herb';
+      offlineGathering[resourceType] = resourcesGathered;
+    }
+
+    const hasOfflineGathering = Object.values(offlineGathering).some(v => v > 0);
+
+    if (offlineGold > 0 || hasOfflineGathering) {
       set({
         offlineReward: offlineGold,
+        offlineGathering: hasOfflineGathering ? offlineGathering : null,
         showOfflineModal: true,
       });
     }

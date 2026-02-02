@@ -3,20 +3,24 @@ import { View, Text, StyleSheet, Modal, Pressable } from 'react-native';
 import { useGameStore } from '../../store/useGameStore';
 import { COLORS, SPACING, FONT_SIZES, scale } from '../../constants/theme';
 import { formatNumber, formatTime } from '../../utils/format';
+import { RESOURCES, ALL_RESOURCES } from '../../data/resources';
 
 export const OfflineModal = React.memo(() => {
   const showOfflineModal = useGameStore((state) => state.showOfflineModal);
   const offlineReward = useGameStore((state) => state.offlineReward);
+  const offlineGathering = useGameStore((state) => state.offlineGathering);
   const lastOnlineTime = useGameStore((state) => state.lastOnlineTime);
   const setShowOfflineModal = useGameStore((state) => state.setShowOfflineModal);
   const gold = useGameStore((state) => state.gold);
+  const collectOfflineGathering = useGameStore((state) => state.collectOfflineGathering);
 
   const offlineSeconds = (Date.now() - lastOnlineTime) / 1000;
 
   const handleCollect = useCallback(() => {
     useGameStore.setState({ gold: gold + offlineReward });
+    collectOfflineGathering();
     setShowOfflineModal(false);
-  }, [gold, offlineReward, setShowOfflineModal]);
+  }, [gold, offlineReward, collectOfflineGathering, setShowOfflineModal]);
 
   return (
     <Modal
@@ -27,7 +31,7 @@ export const OfflineModal = React.memo(() => {
     >
       <View style={styles.overlay}>
         <View style={styles.modal}>
-          <Text style={styles.title}>🌙 歡迎回來！</Text>
+          <Text style={styles.title}>歡迎回來！</Text>
 
           <Text style={styles.message}>
             你離線了 {formatTime(offlineSeconds)}
@@ -36,8 +40,23 @@ export const OfflineModal = React.memo(() => {
           <View style={styles.rewardContainer}>
             <Text style={styles.rewardLabel}>離線獎勵</Text>
             <Text style={styles.rewardAmount}>
-              💰 {formatNumber(offlineReward)}
+              {formatNumber(offlineReward)} G
             </Text>
+
+            {offlineGathering && (
+              <View style={styles.gatheringRewards}>
+                {ALL_RESOURCES.map((resourceType) => {
+                  const amount = offlineGathering[resourceType];
+                  if (amount <= 0) return null;
+                  const resourceDef = RESOURCES[resourceType];
+                  return (
+                    <Text key={resourceType} style={styles.gatheringItem}>
+                      {resourceDef.icon} {resourceDef.name} +{formatNumber(amount)}
+                    </Text>
+                  );
+                })}
+              </View>
+            )}
           </View>
 
           <Pressable
@@ -117,5 +136,15 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     fontWeight: 'bold',
     textAlign: 'center',
+  },
+  gatheringRewards: {
+    marginTop: SPACING.md,
+    width: '100%',
+  },
+  gatheringItem: {
+    fontSize: FONT_SIZES.md,
+    color: COLORS.text,
+    textAlign: 'center',
+    marginTop: SPACING.xs,
   },
 });

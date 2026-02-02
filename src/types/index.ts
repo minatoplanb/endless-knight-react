@@ -1,5 +1,23 @@
 export type UpgradeType = 'hp' | 'atk' | 'def' | 'speed' | 'crit';
 
+// Gathering System Types
+export type ResourceType = 'ore' | 'wood' | 'fish' | 'herb';
+export type WorkerType = 'miner' | 'lumberjack' | 'fisher' | 'gatherer';
+
+export interface Worker {
+  type: WorkerType;
+  level: number;
+  // Progress tracking for partial resource generation
+  progress: number; // 0-1, accumulates until 1 = gather 1 resource
+}
+
+export interface GatheringState {
+  workers: Record<WorkerType, Worker>;
+  resources: Record<ResourceType, number>;
+  resourceCaps: Record<ResourceType, number>;
+  lastGatherTime: number; // For offline calculation
+}
+
 // Equipment System Types
 export type Rarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
 
@@ -62,11 +80,46 @@ export interface Enemy {
 }
 
 export interface StageProgress {
-  currentStage: number;
-  highestStage: number;
+  currentStage: number; // Stage within current area (1 to area.stages)
+  highestStage: number; // Legacy: highest stage reached overall
   enemiesKilled: number;
   travelProgress: number; // 0-100
   isTraveling: boolean;
+  currentAreaId: string; // Current area ID
+}
+
+// Area System Types (re-exported from data/areas.ts for convenience)
+export interface AreaEnemy {
+  id: string;
+  name: string;
+  sprite: string;
+  baseHp: number;
+  baseAtk: number;
+  baseDef: number;
+  goldMultiplier: number;
+  weight: number;
+}
+
+export interface AreaUnlockCondition {
+  type: 'clear_area' | 'none';
+  areaId?: string;
+}
+
+export interface Area {
+  id: string;
+  name: string;
+  description: string;
+  background: string;
+  requiredLevel: number;
+  stages: number;
+  enemies: AreaEnemy[];
+  unlockCondition: AreaUnlockCondition;
+}
+
+export interface AreaProgress {
+  currentStage: number; // Current stage in this area (1 to area.stages)
+  highestStage: number; // Highest stage reached in this area
+  cleared: boolean; // Has this area been fully cleared
 }
 
 export interface DamagePopup {
@@ -90,9 +143,14 @@ export interface GameState {
   pendingLoot: Equipment | null; // Equipment waiting to be shown in loot modal
   backpackLevel: number;
 
-  // Stage
+  // Stage and Area
   stage: StageProgress;
   currentEnemy: Enemy | null;
+  unlockedAreas: string[]; // Array of unlocked area IDs
+  areaProgress: Record<string, AreaProgress>; // Progress per area
+
+  // Gathering System
+  gathering: GatheringState;
 
   // UI State
   damagePopups: DamagePopup[];
@@ -101,6 +159,9 @@ export interface GameState {
   showOfflineModal: boolean;
   showLootModal: boolean;
   offlineReward: number;
+
+  // Offline gathering reward (separate from gold)
+  offlineGathering: Record<ResourceType, number> | null;
 
   // Time tracking
   lastSaveTime: number;
@@ -124,6 +185,11 @@ export interface GameActions {
   killEnemy: () => void;
   playerDie: () => void;
 
+  // Area System
+  changeArea: (areaId: string) => void;
+  unlockArea: (areaId: string) => void;
+  getCurrentArea: () => Area | undefined;
+
   // Upgrades
   buyUpgrade: (type: UpgradeType) => boolean;
   getUpgradeCost: (type: UpgradeType) => number;
@@ -144,6 +210,13 @@ export interface GameActions {
   buyBackpackUpgrade: () => boolean;
   getBackpackCapacity: () => number;
   getBackpackUpgradeCost: () => number;
+
+  // Gathering System
+  tickGathering: () => void;
+  upgradeWorker: (workerType: WorkerType) => boolean;
+  getWorkerUpgradeCost: (workerType: WorkerType) => number;
+  collectOfflineGathering: () => void;
+  dismissOfflineGathering: () => void;
 
   // Damage popups
   addDamagePopup: (popup: Omit<DamagePopup, 'id' | 'timestamp'>) => void;
@@ -174,4 +247,9 @@ export interface SaveData {
   inventory?: Equipment[];
   // Backpack upgrade (added in v0.3.0)
   backpackLevel?: number;
+  // Area system (added in v0.4.0)
+  unlockedAreas?: string[];
+  areaProgress?: Record<string, AreaProgress>;
+  // Gathering system (added in v0.5.0)
+  gathering?: GatheringState;
 }

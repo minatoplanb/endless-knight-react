@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, ImageBackground, ImageSourcePropType } from 'react-native';
 import { useGameStore } from '../../store/useGameStore';
 import { COLORS, SPACING, FONT_SIZES, scale, SCREEN } from '../../constants/theme';
 import { HealthBar } from './HealthBar';
 import { CharacterSprite } from './CharacterSprite';
 import { DamagePopupItem } from './DamagePopup';
+import { getAreaById, AreaEnemy } from '../../data/areas';
 
 // Background images
 const BACKGROUNDS: { [key: string]: ImageSourcePropType } = {
@@ -17,48 +18,41 @@ const BACKGROUNDS: { [key: string]: ImageSourcePropType } = {
   hell_dark: require('../../../assets/images/backgrounds/hell_dark.png'),
 };
 
-// Enemy types by stage range
-const ENEMY_TYPES = [
-  'slime_green', 'slime_blue', 'rat', 'bat', 'mushroom',
-  'slime_red', 'goblin', 'skeleton', 'orc', 'zombie',
-  'skeleton_red', 'skeleton_gold', 'mimic',
-];
-
-// Get enemy type based on stage
-const getEnemyType = (stage: number): string => {
-  const index = (stage - 1) % ENEMY_TYPES.length;
-  return ENEMY_TYPES[index];
+// Get background from area data or fallback
+const getBackgroundForArea = (areaId: string): ImageSourcePropType => {
+  const area = getAreaById(areaId);
+  if (area && BACKGROUNDS[area.background]) {
+    return BACKGROUNDS[area.background];
+  }
+  return BACKGROUNDS.forest; // default fallback
 };
 
-// Get background based on stage
-const getBackground = (stage: number): ImageSourcePropType => {
-  if (stage <= 10) return BACKGROUNDS.forest;
-  if (stage <= 20) return BACKGROUNDS.forest_autumn;
-  if (stage <= 30) return BACKGROUNDS.forest_winter;
-  if (stage <= 40) return BACKGROUNDS.desert;
-  if (stage <= 50) return BACKGROUNDS.dark_forest;
-  if (stage <= 60) return BACKGROUNDS.hell;
-  return BACKGROUNDS.hell_dark;
-};
-
-// Get enemy display name
-const getEnemyName = (type: string): string => {
-  const names: { [key: string]: string } = {
-    slime_green: '綠史萊姆',
-    slime_blue: '藍史萊姆',
-    slime_red: '紅史萊姆',
-    goblin: '哥布林',
-    skeleton: '骷髏',
-    skeleton_red: '紅骷髏',
-    skeleton_gold: '金骷髏',
-    zombie: '殭屍',
-    orc: '獸人',
-    bat: '蝙蝠',
-    rat: '巨鼠',
-    mushroom: '毒蘑菇',
-    mimic: '寶箱怪',
+// Find enemy sprite from area by enemy name
+const findEnemySpriteByName = (areaId: string, enemyName: string): string => {
+  const area = getAreaById(areaId);
+  if (area) {
+    const areaEnemy = area.enemies.find((e) => e.name === enemyName);
+    if (areaEnemy) {
+      return areaEnemy.sprite;
+    }
+  }
+  // Fallback: try to find a matching sprite from the name
+  const nameToSprite: { [key: string]: string } = {
+    '綠史萊姆': 'slime_green',
+    '藍史萊姆': 'slime_blue',
+    '紅史萊姆': 'slime_red',
+    '哥布林': 'goblin',
+    '骷髏': 'skeleton',
+    '紅骷髏': 'skeleton_red',
+    '金骷髏': 'skeleton_gold',
+    '殭屍': 'zombie',
+    '獸人': 'orc',
+    '蝙蝠': 'bat',
+    '巨鼠': 'rat',
+    '毒蘑菇': 'mushroom',
+    '寶箱怪': 'mimic',
   };
-  return names[type] || type;
+  return nameToSprite[enemyName] || 'slime_green';
 };
 
 export const BattleView = React.memo(() => {
@@ -90,8 +84,15 @@ export const BattleView = React.memo(() => {
     setPrevEnemyHp(enemy?.currentHp ?? 0);
   }, [enemy?.currentHp]);
 
-  const currentEnemyType = getEnemyType(stage.currentStage);
-  const currentBackground = getBackground(stage.currentStage);
+  // Get background and enemy sprite from area data
+  const currentBackground = useMemo(
+    () => getBackgroundForArea(stage.currentAreaId),
+    [stage.currentAreaId]
+  );
+  const currentEnemyType = useMemo(
+    () => (enemy ? findEnemySpriteByName(stage.currentAreaId, enemy.name) : 'slime_green'),
+    [stage.currentAreaId, enemy?.name]
+  );
 
   return (
     <View style={styles.container}>
@@ -129,7 +130,7 @@ export const BattleView = React.memo(() => {
           <View style={styles.characterContainer}>
             {enemy && !stage.isTraveling ? (
               <>
-                <Text style={styles.characterLabel}>{getEnemyName(currentEnemyType)}</Text>
+                <Text style={styles.characterLabel}>{enemy.name}</Text>
                 <CharacterSprite
                   isPlayer={false}
                   isHurt={enemyHurt}

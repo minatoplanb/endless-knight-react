@@ -6,6 +6,92 @@
 
 ---
 
+## [Unreleased]
+
+### 修復
+- **敵人圖片修復（Portrait → Sprite）**
+  - 將所有敵人圖片從頭像改為全身像素圖
+  - 修復的敵人：skeleton, skeleton_red, skeleton_gold, goblin, zombie, orc, bat, mushroom, rat, mimic
+  - 所有敵人現在面向左邊（符合 CLAUDE.md 美術規範）
+
+---
+
+## [v0.5.0] - 2026-02-02
+
+### 新增
+- **採集系統**
+  - 4 種工人：礦工、樵夫、漁夫、採集者
+  - 4 種資源：礦石、木材、魚獲、草藥
+  - 工人在背景自動採集（即使在其他分頁）
+  - 工人升級功能（5 級，採集速度加快）
+  - 資源倉庫（每種資源上限 500）
+- **採集頁面** (`app/gathering.tsx`)
+  - 工人卡片顯示等級、採集進度、升級按鈕
+  - 資源倉庫面板顯示當前存量
+- **離線採集收益**
+  - 離線時工人繼續採集
+  - 返回時顯示離線採集獎勵
+
+### 變更
+- 存檔版本升級至 `0.5.0`
+- `useGameStore` 新增採集系統狀態和方法
+- `types/index.ts` 新增 ResourceType、WorkerType、Worker、GatheringState 型別
+- `OfflineModal` 現在顯示離線採集獎勵
+- 底部導航新增「採集」分頁
+
+### 新增檔案
+- `src/data/resources.ts` — 資源類型定義
+- `src/data/gathering.ts` — 工人和升級表定義
+- `src/components/gathering/WorkerCard.tsx` — 工人卡片元件
+- `src/components/gathering/ResourceBar.tsx` — 資源顯示元件
+- `app/gathering.tsx` — 採集頁面
+
+---
+
+## [v0.4.0] - 2026-02-02
+
+### 新增
+- **區域系統**
+  - 3 個初始區域：新手平原、陰暗森林、石壁高地
+  - 每個區域有獨特的敵人池（3-5 種敵人）
+  - 每個區域有專屬背景圖
+  - 區域內關卡數：10/15/20 關
+  - 敵人根據區域和關卡動態生成
+- **區域選擇器** (`AreaSelector.tsx`)
+  - 橫向滾動的區域按鈕列
+  - 顯示區域進度和完成狀態
+  - 未解鎖區域顯示鎖定圖示
+- **區域解鎖機制**
+  - 通關區域自動解鎖下一個區域
+  - 區域進度獨立儲存
+- **TopBar 更新**
+  - 顯示區域名稱
+  - 顯示「第 X/Y 關」格式
+  - 完成區域顯示 ✓ 標記
+
+### 變更
+- 存檔版本升級至 `0.4.0`
+- `useGameStore` 新增區域相關狀態和方法
+- `types/index.ts` 新增 Area、AreaEnemy、AreaProgress 型別
+- `BattleView` 改用區域資料決定背景和敵人
+- 敵人現在有基於區域的名稱和數值
+
+### 新增檔案
+- `src/data/areas.ts` — 區域和敵人定義
+- `src/components/ui/AreaSelector.tsx` — 區域選擇元件
+
+### 文件
+- **CLAUDE.md 新增「設計哲學」章節**
+  - 核心理念：不要只是堆疊數字
+  - 設計原則 5 條（牆=謎題、每個數字都重要、區域效率公式、裝備是解法、後台成長）
+  - 參考遊戲研究：Melvor Idle、Soda Dungeon、Into the Breach
+- **更新「遊戲數值」章節**
+  - 新增區域係數傷害公式（future-proof DEF 系統）
+  - 新增敵人數值範圍表（5 個區域）
+  - 新增 DEF 減傷參考表
+
+---
+
 ## [v0.3.0] - 2026-02-02
 
 ### 新增
