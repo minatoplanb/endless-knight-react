@@ -1,5 +1,8 @@
 export type UpgradeType = 'hp' | 'atk' | 'def' | 'speed' | 'crit';
 
+// Combat Style System Types
+export type CombatStyle = 'melee' | 'ranged' | 'magic';
+
 // Gathering System Types
 export type ResourceType = 'ore' | 'wood' | 'fish' | 'herb';
 export type WorkerType = 'miner' | 'lumberjack' | 'fisher' | 'gatherer';
@@ -77,6 +80,7 @@ export interface Enemy {
   currentHp: number;
   atk: number;
   goldDrop: number;
+  combatStyle: CombatStyle;
 }
 
 export interface StageProgress {
@@ -98,6 +102,7 @@ export interface AreaEnemy {
   baseDef: number;
   goldMultiplier: number;
   weight: number;
+  combatStyle: CombatStyle;
 }
 
 export interface AreaUnlockCondition {
@@ -136,6 +141,7 @@ export interface GameState {
   upgrades: UpgradeLevels;
   gold: number;
   totalGoldEarned: number;
+  combatStyle: CombatStyle;
 
   // Equipment
   equipment: EquipmentSlots;
@@ -184,6 +190,9 @@ export interface GameActions {
   spawnEnemy: () => void;
   killEnemy: () => void;
   playerDie: () => void;
+
+  // Combat Style
+  setCombatStyle: (style: CombatStyle) => void;
 
   // Area System
   changeArea: (areaId: string) => void;
@@ -252,4 +261,6 @@ export interface SaveData {
   areaProgress?: Record<string, AreaProgress>;
   // Gathering system (added in v0.5.0)
   gathering?: GatheringState;
+  // Combat style (added in v0.6.0)
+  combatStyle?: CombatStyle;
 }

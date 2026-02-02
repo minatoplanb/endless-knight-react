@@ -17,7 +17,12 @@ import {
   Worker,
   GatheringState,
   ResourceType,
+  CombatStyle,
 } from '../types';
+import {
+  getCombatMultiplier,
+  getDefenseMultiplier,
+} from '../data/combatStyles';
 import {
   AREAS,
   getAreaById,
@@ -70,12 +75,16 @@ const createEnemyFromArea = (area: Area, stageInArea: number): Enemy => {
     currentHp: stats.hp,
     atk: stats.atk,
     goldDrop: stats.gold,
+    combatStyle: areaEnemy.combatStyle,
   };
 };
 
 // Legacy function for backward compatibility (fallback)
 const createEnemy = (stage: number): Enemy => {
   const stageMultiplier = stage - 1;
+  // Random combat style for legacy enemies
+  const styles: CombatStyle[] = ['melee', 'ranged', 'magic'];
+  const randomStyle = styles[Math.floor(Math.random() * styles.length)];
   return {
     id: generateId(),
     name: `Enemy Lv.${stage}`,
@@ -83,6 +92,7 @@ const createEnemy = (stage: number): Enemy => {
     currentHp: Math.floor(ENEMY_SCALING.hpBase * Math.pow(ENEMY_SCALING.hpMultiplier, stageMultiplier)),
     atk: Math.floor(ENEMY_SCALING.atkBase * Math.pow(ENEMY_SCALING.atkMultiplier, stageMultiplier)),
     goldDrop: Math.floor(ENEMY_SCALING.goldBase * Math.pow(ENEMY_SCALING.goldMultiplier, stageMultiplier)),
+    combatStyle: randomStyle,
   };
 };
 
@@ -142,6 +152,7 @@ const initialState: GameState = {
   },
   gold: 0,
   totalGoldEarned: 0,
+  combatStyle: 'melee',
   equipment: { ...emptyEquipmentSlots },
   inventory: [],
   pendingLoot: null,
@@ -263,7 +274,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (Math.random() > attackChance) return;
 
     const isCrit = Math.random() < state.player.critChance;
-    let damage = Math.max(1, state.player.atk - Math.floor(state.currentEnemy.atk * 0.1));
+    let baseDamage = Math.max(1, state.player.atk - Math.floor(state.currentEnemy.atk * 0.1));
+
+    // Apply combat style multiplier
+    const styleMultiplier = getCombatMultiplier(state.combatStyle, state.currentEnemy.combatStyle);
+    let damage = Math.floor(baseDamage * styleMultiplier);
+
     if (isCrit) {
       damage = Math.floor(damage * state.player.critMultiplier);
     }
@@ -295,7 +311,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const attackChance = 1 * (TICK_INTERVAL / 1000); // Enemy attacks once per second
     if (Math.random() > attackChance) return;
 
-    const damage = Math.max(1, state.currentEnemy.atk - state.player.def);
+    let baseDamage = Math.max(1, state.currentEnemy.atk - state.player.def);
+
+    // Apply combat style defense multiplier (player takes more damage if at disadvantage)
+    const defenseMultiplier = getDefenseMultiplier(state.combatStyle, state.currentEnemy.combatStyle);
+    const damage = Math.floor(baseDamage * defenseMultiplier);
+
     const newPlayerHp = state.player.currentHp - damage;
 
     get().addDamagePopup({
@@ -663,6 +684,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
     get().dismissLootToast();
   },
 
+  // Combat Style
+  setCombatStyle: (style: CombatStyle) => {
+    set({ combatStyle: style });
+  },
+
   // Area System
   changeArea: (areaId: string) => {
     const state = get();
@@ -856,7 +882,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   saveGame: async () => {
     const state = get();
     const saveData: SaveData = {
-      version: '0.5.0',
+      version: '0.6.0',
       player: state.player,
       upgrades: state.upgrades,
       gold: state.gold,
@@ -869,6 +895,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       unlockedAreas: state.unlockedAreas,
       areaProgress: state.areaProgress,
       gathering: state.gathering,
+      combatStyle: state.combatStyle,
     };
 
     try {
@@ -908,6 +935,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         upgrades: data.upgrades,
         gold: data.gold,
         totalGoldEarned: data.totalGoldEarned,
+        combatStyle: data.combatStyle || 'melee',
         stage: {
           ...data.stage,
           currentAreaId: savedAreaId,

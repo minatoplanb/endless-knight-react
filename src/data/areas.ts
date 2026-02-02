@@ -1,6 +1,7 @@
 // Area System - defines game regions with unique enemies and progression
 
 import { ImageSourcePropType } from 'react-native';
+import { CombatStyle } from './combatStyles';
 
 // Enemy definition for a specific area
 export interface AreaEnemy {
@@ -12,6 +13,7 @@ export interface AreaEnemy {
   baseDef: number;
   goldMultiplier: number; // relative to base gold drop
   weight: number; // spawn weight (higher = more common)
+  combatStyle: CombatStyle; // Combat triangle style
 }
 
 // Area unlock condition
@@ -53,6 +55,7 @@ export const AREAS: Area[] = [
         baseDef: 0,
         goldMultiplier: 1.0,
         weight: 40,
+        combatStyle: 'melee',
       },
       {
         id: 'slime_blue',
@@ -63,6 +66,7 @@ export const AREAS: Area[] = [
         baseDef: 2,
         goldMultiplier: 1.1,
         weight: 30,
+        combatStyle: 'magic',
       },
       {
         id: 'rat',
@@ -73,6 +77,7 @@ export const AREAS: Area[] = [
         baseDef: 0,
         goldMultiplier: 0.9,
         weight: 20,
+        combatStyle: 'melee',
       },
       {
         id: 'mushroom',
@@ -83,6 +88,7 @@ export const AREAS: Area[] = [
         baseDef: 5,
         goldMultiplier: 1.2,
         weight: 10,
+        combatStyle: 'magic',
       },
     ],
     unlockCondition: { type: 'none' },
@@ -106,6 +112,7 @@ export const AREAS: Area[] = [
         baseDef: 3,
         goldMultiplier: 1.0,
         weight: 30,
+        combatStyle: 'ranged',
       },
       {
         id: 'goblin',
@@ -116,6 +123,7 @@ export const AREAS: Area[] = [
         baseDef: 5,
         goldMultiplier: 1.3,
         weight: 35,
+        combatStyle: 'ranged',
       },
       {
         id: 'slime_red',
@@ -126,6 +134,7 @@ export const AREAS: Area[] = [
         baseDef: 8,
         goldMultiplier: 1.2,
         weight: 20,
+        combatStyle: 'melee',
       },
       {
         id: 'zombie',
@@ -136,6 +145,7 @@ export const AREAS: Area[] = [
         baseDef: 10,
         goldMultiplier: 1.5,
         weight: 15,
+        combatStyle: 'melee',
       },
     ],
     unlockCondition: { type: 'clear_area', areaId: 'starter_plains' },
@@ -159,6 +169,7 @@ export const AREAS: Area[] = [
         baseDef: 15,
         goldMultiplier: 1.0,
         weight: 35,
+        combatStyle: 'melee',
       },
       {
         id: 'skeleton_red',
@@ -169,6 +180,7 @@ export const AREAS: Area[] = [
         baseDef: 12,
         goldMultiplier: 1.3,
         weight: 25,
+        combatStyle: 'magic',
       },
       {
         id: 'orc',
@@ -179,6 +191,7 @@ export const AREAS: Area[] = [
         baseDef: 20,
         goldMultiplier: 1.4,
         weight: 25,
+        combatStyle: 'melee',
       },
       {
         id: 'skeleton_gold',
@@ -189,6 +202,7 @@ export const AREAS: Area[] = [
         baseDef: 25,
         goldMultiplier: 2.0,
         weight: 10,
+        combatStyle: 'ranged',
       },
       {
         id: 'mimic',
@@ -199,6 +213,7 @@ export const AREAS: Area[] = [
         baseDef: 18,
         goldMultiplier: 3.0,
         weight: 5,
+        combatStyle: 'magic',
       },
     ],
     unlockCondition: { type: 'clear_area', areaId: 'dark_forest' },
