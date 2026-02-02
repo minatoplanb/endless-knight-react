@@ -276,7 +276,22 @@ const createDefaultStatistics = (): GameStatistics => ({
   skillsUsed: 0,
   enhancementsAttempted: 0,
   resourcesCollected: { ore: 0, wood: 0, fish: 0, herb: 0 },
+  totalResourcesCollected: 0,
 });
+
+// Migrate statistics from old saves
+const migrateStatistics = (saved: Partial<GameStatistics> | undefined): GameStatistics => {
+  const defaults = createDefaultStatistics();
+  if (!saved) return defaults;
+  return {
+    ...defaults,
+    ...saved,
+    resourcesCollected: {
+      ...defaults.resourcesCollected,
+      ...(saved.resourcesCollected || {}),
+    },
+  };
+};
 
 // Create default gathering state
 const createDefaultGatheringState = (): GatheringState => {
@@ -891,6 +906,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
         }
         case 'prestige': {
           if (prestige.prestigeCount >= achievement.condition.threshold) {
+            unlocked = true;
+          }
+          break;
+        }
+        case 'resource_collected': {
+          const resourceType = achievement.condition.resourceType;
+          if (resourceType && statistics.resourcesCollected[resourceType] >= achievement.condition.threshold) {
             unlocked = true;
           }
           break;
@@ -1656,8 +1678,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
       // Update statistics for resources collected
       const newResourcesCollected = { ...statistics.resourcesCollected };
+      let totalGainedThisTick = 0;
       for (const [resource, amount] of Object.entries(resourcesGainedThisTick)) {
         newResourcesCollected[resource as ResourceType] += amount;
+        totalGainedThisTick += amount;
       }
 
       set({
@@ -1670,6 +1694,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         statistics: {
           ...statistics,
           resourcesCollected: newResourcesCollected,
+          totalResourcesCollected: statistics.totalResourcesCollected + totalGainedThisTick,
         },
       });
 
@@ -2289,7 +2314,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         prestige: data.prestige || createDefaultPrestigeState(),
         skills: data.skills || createDefaultSkillState(),
         skillBuffs: data.skillBuffs || [],
-        statistics: data.statistics || createDefaultStatistics(),
+        statistics: migrateStatistics(data.statistics),
         unlockedAchievements: data.unlockedAchievements || [],
         dailyRewardStreak: data.dailyRewardStreak || 0,
         lastDailyClaimTime: data.lastDailyClaimTime || 0,

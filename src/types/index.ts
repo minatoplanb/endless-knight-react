@@ -202,6 +202,7 @@ export interface GameStatistics {
   // Added for quest tracking
   enhancementsAttempted: number;
   resourcesCollected: Record<ResourceType, number>;
+  totalResourcesCollected: number; // Sum of all resources collected
 }
 
 // Quest System Types

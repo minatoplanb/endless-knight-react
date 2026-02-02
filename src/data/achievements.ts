@@ -10,10 +10,11 @@ export interface Achievement {
   category: AchievementCategory;
   // Condition to unlock
   condition: {
-    type: 'stat_threshold' | 'area_clear' | 'boss_kill' | 'equipment_rarity' | 'worker_level' | 'prestige';
+    type: 'stat_threshold' | 'area_clear' | 'boss_kill' | 'equipment_rarity' | 'worker_level' | 'prestige' | 'resource_collected';
     stat?: string; // For stat_threshold
     threshold: number;
     areaId?: string; // For area_clear
+    resourceType?: 'ore' | 'wood' | 'fish' | 'herb'; // For resource_collected
   };
   // Reward for completing (optional)
   reward?: {
@@ -401,6 +402,125 @@ export const ACHIEVEMENTS: Achievement[] = [
     icon: '💎',
     category: 'equipment',
     condition: { type: 'stat_threshold', stat: 'enhancementsAttempted', threshold: 200 },
+    reward: { type: 'prestige_points', amount: 5 },
+  },
+
+  // ========== GATHERING ACHIEVEMENTS ==========
+  {
+    id: 'first_ore',
+    name: '初次採礦',
+    description: '採集 10 個礦石',
+    icon: '⛏️',
+    category: 'gathering',
+    condition: { type: 'resource_collected', resourceType: 'ore', threshold: 10 },
+    reward: { type: 'gold', amount: 100 },
+  },
+  {
+    id: 'ore_collector',
+    name: '礦石收藏家',
+    description: '採集 500 個礦石',
+    icon: '🪨',
+    category: 'gathering',
+    condition: { type: 'resource_collected', resourceType: 'ore', threshold: 500 },
+    reward: { type: 'gold', amount: 1000 },
+  },
+  {
+    id: 'ore_master',
+    name: '採礦大師',
+    description: '採集 5,000 個礦石',
+    icon: '💎',
+    category: 'gathering',
+    condition: { type: 'resource_collected', resourceType: 'ore', threshold: 5000 },
+    reward: { type: 'skill_points', amount: 3 },
+  },
+  {
+    id: 'first_wood',
+    name: '初次伐木',
+    description: '採集 10 個木材',
+    icon: '🪓',
+    category: 'gathering',
+    condition: { type: 'resource_collected', resourceType: 'wood', threshold: 10 },
+    reward: { type: 'gold', amount: 100 },
+  },
+  {
+    id: 'wood_collector',
+    name: '木材收藏家',
+    description: '採集 500 個木材',
+    icon: '🪵',
+    category: 'gathering',
+    condition: { type: 'resource_collected', resourceType: 'wood', threshold: 500 },
+    reward: { type: 'gold', amount: 1000 },
+  },
+  {
+    id: 'wood_master',
+    name: '伐木大師',
+    description: '採集 5,000 個木材',
+    icon: '🌲',
+    category: 'gathering',
+    condition: { type: 'resource_collected', resourceType: 'wood', threshold: 5000 },
+    reward: { type: 'skill_points', amount: 3 },
+  },
+  {
+    id: 'first_fish',
+    name: '初次釣魚',
+    description: '採集 10 條魚',
+    icon: '🎣',
+    category: 'gathering',
+    condition: { type: 'resource_collected', resourceType: 'fish', threshold: 10 },
+    reward: { type: 'gold', amount: 100 },
+  },
+  {
+    id: 'fish_collector',
+    name: '魚獲收藏家',
+    description: '採集 500 條魚',
+    icon: '🐟',
+    category: 'gathering',
+    condition: { type: 'resource_collected', resourceType: 'fish', threshold: 500 },
+    reward: { type: 'gold', amount: 1000 },
+  },
+  {
+    id: 'fish_master',
+    name: '釣魚大師',
+    description: '採集 5,000 條魚',
+    icon: '🐠',
+    category: 'gathering',
+    condition: { type: 'resource_collected', resourceType: 'fish', threshold: 5000 },
+    reward: { type: 'skill_points', amount: 3 },
+  },
+  {
+    id: 'first_herb',
+    name: '初次採藥',
+    description: '採集 10 株草藥',
+    icon: '🌿',
+    category: 'gathering',
+    condition: { type: 'resource_collected', resourceType: 'herb', threshold: 10 },
+    reward: { type: 'gold', amount: 100 },
+  },
+  {
+    id: 'herb_collector',
+    name: '草藥收藏家',
+    description: '採集 500 株草藥',
+    icon: '🍀',
+    category: 'gathering',
+    condition: { type: 'resource_collected', resourceType: 'herb', threshold: 500 },
+    reward: { type: 'gold', amount: 1000 },
+  },
+  {
+    id: 'herb_master',
+    name: '採藥大師',
+    description: '採集 5,000 株草藥',
+    icon: '🌱',
+    category: 'gathering',
+    condition: { type: 'resource_collected', resourceType: 'herb', threshold: 5000 },
+    reward: { type: 'skill_points', amount: 3 },
+  },
+  {
+    id: 'total_gatherer',
+    name: '全能採集者',
+    description: '總共採集 10,000 個資源',
+    icon: '🏆',
+    category: 'gathering',
+    condition: { type: 'stat_threshold', stat: 'totalResourcesCollected', threshold: 10000 },
     reward: { type: 'prestige_points', amount: 5 },
   },
 ];
