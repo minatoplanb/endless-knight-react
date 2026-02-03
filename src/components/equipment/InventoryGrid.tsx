@@ -1,5 +1,5 @@
-import React, { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, Pressable, Image } from 'react-native';
+import React, { useCallback, useMemo, useState } from 'react';
+import { View, Text, StyleSheet, Pressable, Image } from 'react-native';
 import { useGameStore } from '../../store/useGameStore';
 import { COLORS, SPACING, FONT_SIZES, scale } from '../../constants/theme';
 import { Equipment, Rarity } from '../../types';
@@ -119,18 +119,14 @@ export const InventoryGrid = React.memo(() => {
 
   const currentEquipped = selectedItem ? equipment[selectedItem.slot] : null;
 
-  const renderItem = useCallback(
-    ({ item }: { item: Equipment }) => (
-      <InventoryItem
-        item={item}
-        onPress={handleItemPress}
-        selected={selectedItem?.id === item.id}
-      />
-    ),
-    [handleItemPress, selectedItem]
-  );
-
-  const keyExtractor = useCallback((item: Equipment) => item.id, []);
+  // 把背包物品切成每列 5 個，用普通 View 排版，避免 FlatList + ScrollView 的警告
+  const rows = useMemo(() => {
+    const result: Equipment[][] = [];
+    for (let i = 0; i < inventory.length; i += 5) {
+      result.push(inventory.slice(i, i + 5));
+    }
+    return result;
+  }, [inventory]);
 
   return (
     <View style={styles.container}>
@@ -147,15 +143,20 @@ export const InventoryGrid = React.memo(() => {
           <Text style={styles.emptySubtext}>擊敗敵人獲取裝備</Text>
         </View>
       ) : (
-        <FlatList
-          data={inventory}
-          renderItem={renderItem}
-          keyExtractor={keyExtractor}
-          numColumns={5}
-          columnWrapperStyle={styles.row}
-          contentContainerStyle={styles.gridContent}
-          showsVerticalScrollIndicator={false}
-        />
+        <View style={styles.gridContent}>
+          {rows.map((row, rowIndex) => (
+            <View key={rowIndex} style={styles.row}>
+              {row.map((item) => (
+                <InventoryItem
+                  key={item.id}
+                  item={item}
+                  onPress={handleItemPress}
+                  selected={selectedItem?.id === item.id}
+                />
+              ))}
+            </View>
+          ))}
+        </View>
       )}
 
       {selectedItem && (
@@ -203,6 +204,7 @@ const styles = StyleSheet.create({
     paddingBottom: SPACING.md,
   },
   row: {
+    flexDirection: 'row',
     justifyContent: 'flex-start',
     gap: SPACING.xs,
     marginBottom: SPACING.xs,
