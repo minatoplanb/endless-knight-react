@@ -138,7 +138,7 @@ Idle RPG! Auto-battle, collect epic loot, prestige & grow stronger offline!
 • 不需要註冊或登入
 
 📧 聯絡我們
-有問題或建議？歡迎聯繫：davidhkanay520@gmail.com
+有問題或建議？歡迎聯繫：minato.planb@gmail.com
 ```
 
 ### English Version
@@ -246,7 +246,7 @@ Start your adventure and become the Endless Knight!
 • No registration or login required
 
 📧 Contact Us
-Questions or suggestions? Email: davidhkanay520@gmail.com
+Questions or suggestions? Email: minato.planb@gmail.com
 ```
 
 ---
@@ -451,7 +451,7 @@ idle rpg, auto battler, incremental game, loot collection, prestige, offline rew
 
 **Developer Name:** Your Name / Studio Name (需要決定)
 
-**Email:** davidhkanay520@gmail.com
+**Email:** minato.planb@gmail.com
 
 **Website:** (可選，可以用 GitHub repo 或專門建一個)
 

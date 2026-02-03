@@ -56,7 +56,7 @@ You are advised to review this Privacy Policy periodically for any changes.
 
 If you have any questions or suggestions about our Privacy Policy, do not hesitate to contact us:
 
-**Email:** davidhkanay520@gmail.com
+**Email:** minato.planb@gmail.com
 
 ---
 
@@ -118,4 +118,4 @@ If you have any questions or suggestions about our Privacy Policy, do not hesita
 
 如果您對我們的隱私政策有任何疑問或建議，請隨時與我們聯繫：
 
-**電子郵件：** davidhkanay520@gmail.com
+**電子郵件：** minato.planb@gmail.com

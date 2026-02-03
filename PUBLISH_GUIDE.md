@@ -313,7 +313,7 @@ eas build --platform android --profile preview
 
 #### 聯絡資訊
 
-- **電子郵件：** davidhkanay520@gmail.com
+- **電子郵件：** minato.planb@gmail.com
 - **網站：** （可選）
 - **電話：** （可選）
 
