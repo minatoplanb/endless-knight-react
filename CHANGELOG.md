@@ -8,6 +8,13 @@
 
 ## [Unreleased]
 
+### 修復
+- **回退圖示系統重構（Revert Icon System Refactoring）**
+  - 移除 `src/constants/icons.ts` 集中式圖示管理系統
+  - 恢復組件內部靜態圖示映射（EquipmentSlot, InventoryGrid, ItemDetail, LootModal）
+  - 修復由動態 require 導致的效能問題和 lag
+  - 修復裝備圖示錯誤（斧頭顯示為動物等問題）
+
 ### 新增
 - **成就系統（Achievement System）**
   - 50+ 種成就，涵蓋戰鬥/進度/經濟/製作/技能/裝備/採集
