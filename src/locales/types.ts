@@ -190,4 +190,9 @@ export type LocaleStrings = {
     enable: string;
     desc: string;
   };
+  consumable: {
+    food: string;
+    potion: string;
+    owned: string;
+  };
 };

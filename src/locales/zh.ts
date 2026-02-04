@@ -166,6 +166,11 @@ export const zh: LocaleStrings = {
     enable: '自動施放技能',
     desc: '技能冷卻完畢時自動使用',
   },
+  consumable: {
+    food: '食物',
+    potion: '藥水',
+    owned: '持有',
+  },
   crafting: {
     level: '製作等級',
     xp: '經驗',

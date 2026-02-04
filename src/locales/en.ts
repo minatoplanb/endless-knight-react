@@ -166,6 +166,11 @@ export const en: LocaleStrings = {
     enable: 'Auto-cast Skills',
     desc: 'Automatically use skills when off cooldown',
   },
+  consumable: {
+    food: 'Food',
+    potion: 'Potion',
+    owned: 'Owned',
+  },
   crafting: {
     level: 'Crafting Level',
     xp: 'XP',

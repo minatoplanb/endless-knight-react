@@ -50,19 +50,21 @@ const ConsumableButton = React.memo<{
   consumableId: string;
   amount: number;
   onPress: () => void;
-}>(({ consumableId, amount, onPress }) => {
+  onLongPress: () => void;
+}>(({ consumableId, amount, onPress, onLongPress }) => {
   const consumable = getConsumableById(consumableId);
   if (!consumable) return null;
 
   return (
-    <TouchableOpacity
+    <Pressable
       style={[styles.actionButton, styles.consumableButton]}
       onPress={onPress}
-      activeOpacity={0.7}
+      onLongPress={onLongPress}
+      delayLongPress={300}
     >
       <Text style={styles.buttonIcon}>{consumable.icon}</Text>
       <Text style={styles.amountBadge}>{amount}</Text>
-    </TouchableOpacity>
+    </Pressable>
   );
 });
 
@@ -85,8 +87,9 @@ export const ActionBar = React.memo(() => {
   const isSkillReady = useGameStore((state) => state.isSkillReady);
   const getSkillCooldownRemaining = useGameStore((state) => state.getSkillCooldownRemaining);
 
-  // Skill tooltip state
+  // Tooltip states
   const [tooltipSkill, setTooltipSkill] = useState<SkillId | null>(null);
+  const [tooltipConsumable, setTooltipConsumable] = useState<string | null>(null);
 
   const handleSkillPress = useCallback((skillId: SkillId) => {
     useSkill(skillId);
@@ -99,6 +102,10 @@ export const ActionBar = React.memo(() => {
   const handleConsumablePress = useCallback((consumableId: string) => {
     useConsumable(consumableId);
   }, [useConsumable]);
+
+  const handleConsumableLongPress = useCallback((consumableId: string) => {
+    setTooltipConsumable(consumableId);
+  }, []);
 
   // Get unlocked skills (max 3 for display)
   const unlockedSkills = ALL_SKILL_IDS.filter((id) => skills.unlockedSkills[id] > 0).slice(0, 3);
@@ -138,6 +145,7 @@ export const ActionBar = React.memo(() => {
             consumableId={stack.consumableId}
             amount={stack.amount}
             onPress={() => handleConsumablePress(stack.consumableId)}
+            onLongPress={() => handleConsumableLongPress(stack.consumableId)}
           />
         ))}
 
@@ -203,6 +211,70 @@ export const ActionBar = React.memo(() => {
               </Text>
             </View>
           )}
+        </Pressable>
+      </Modal>
+
+      {/* Consumable Tooltip Modal */}
+      <Modal
+        visible={tooltipConsumable !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setTooltipConsumable(null)}
+      >
+        <Pressable
+          style={styles.tooltipOverlay}
+          onPress={() => setTooltipConsumable(null)}
+        >
+          {tooltipConsumable && (() => {
+            const consumable = getConsumableById(tooltipConsumable);
+            if (!consumable) return null;
+            const stack = consumables.find(s => s.consumableId === tooltipConsumable);
+
+            return (
+              <View style={[styles.tooltipContainer, styles.consumableTooltip]}>
+                <View style={styles.tooltipHeader}>
+                  <Text style={styles.tooltipIcon}>{consumable.icon}</Text>
+                  <View>
+                    <Text style={styles.tooltipName}>
+                      {getDataName('consumable', consumable.id, consumable.name)}
+                    </Text>
+                    <Text style={styles.tooltipType}>
+                      {consumable.type === 'food' ? '🍖 ' + t('consumable.food') : '🧪 ' + t('consumable.potion')}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.tooltipDivider} />
+                <Text style={styles.tooltipEffect}>
+                  {consumable.description}
+                </Text>
+                <View style={styles.tooltipStats}>
+                  {consumable.effect.type === 'heal' && (
+                    <Text style={[styles.tooltipStat, styles.healStat]}>
+                      ❤️ +{consumable.effect.amount} HP
+                    </Text>
+                  )}
+                  {consumable.effect.type === 'buff' && (
+                    <>
+                      <Text style={[styles.tooltipStat, styles.buffStat]}>
+                        ⬆️ +{Math.round((consumable.effect.multiplier - 1) * 100)}%
+                      </Text>
+                      <Text style={styles.tooltipStat}>
+                        ⏱️ {consumable.effect.duration / 1000}s
+                      </Text>
+                    </>
+                  )}
+                </View>
+                {stack && (
+                  <Text style={styles.tooltipAmount}>
+                    {t('consumable.owned')}: {stack.amount}
+                  </Text>
+                )}
+                <Text style={styles.tooltipHint}>
+                  {t('common.cancel')}
+                </Text>
+              </View>
+            );
+          })()}
         </Pressable>
       </Modal>
     </View>
@@ -365,5 +437,24 @@ const styles = StyleSheet.create({
     color: COLORS.textDim,
     textAlign: 'center',
     fontStyle: 'italic',
+  },
+  // Consumable tooltip specific
+  consumableTooltip: {
+    borderColor: COLORS.uncommon,
+  },
+  tooltipType: {
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.textDim,
+  },
+  healStat: {
+    color: COLORS.hpFull,
+  },
+  buffStat: {
+    color: COLORS.textGold,
+  },
+  tooltipAmount: {
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.text,
+    marginBottom: scale(8),
   },
 });
