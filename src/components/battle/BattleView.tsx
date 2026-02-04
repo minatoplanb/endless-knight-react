@@ -70,11 +70,11 @@ const CombatStyleIndicator = React.memo<{ playerStyle: CombatStyle; enemyStyle: 
     let statusIcon = '⚖️';
 
     if (playerHasAdvantage) {
-      statusText = '優勢 +50%';
+      statusText = '優勢 2倍傷害';
       statusColor = '#22c55e';
       statusIcon = '⬆️';
     } else if (enemyHasAdvantage) {
-      statusText = '劣勢 -50%';
+      statusText = '劣勢 受2倍傷害';
       statusColor = '#ef4444';
       statusIcon = '⬇️';
     }
@@ -224,6 +224,7 @@ export const BattleView = React.memo(() => {
               isPlayer={true}
               isHurt={playerHurt}
               isDead={player.currentHp <= 0}
+              combatStyle={playerCombatStyle}
             />
             <View style={styles.healthBarContainer}>
               <HealthBar

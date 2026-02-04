@@ -36,11 +36,18 @@ export const COMBAT_STYLES: Record<CombatStyle, CombatStyleInfo> = {
   },
 };
 
-// Damage multiplier when attacker has advantage
-export const ADVANTAGE_MULTIPLIER = 1.5;
+// Damage multiplier when attacker has advantage (more impactful!)
+export const ADVANTAGE_MULTIPLIER = 2.0;
 
 // Damage multiplier when defender has advantage (attacker at disadvantage)
-export const DISADVANTAGE_MULTIPLIER = 1.5;
+export const DISADVANTAGE_MULTIPLIER = 2.0;
+
+// Player sprite tint colors for each combat style
+export const COMBAT_STYLE_TINTS = {
+  melee: '#ff6b6b',   // Red tint for melee
+  ranged: '#4ecdc4',  // Teal tint for ranged
+  magic: '#a855f7',   // Purple tint for magic
+};
 
 // Combat triangle relationships
 // Key = attacker style, Value = style that attacker beats

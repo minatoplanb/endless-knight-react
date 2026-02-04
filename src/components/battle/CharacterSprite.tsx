@@ -1,9 +1,16 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Image, StyleSheet, Animated, ImageSourcePropType } from 'react-native';
 import { scale } from '../../constants/theme';
+import { CombatStyle, COMBAT_STYLE_TINTS } from '../../data/combatStyles';
 
-// Image imports
+// Image imports - can add more player sprites later
 const PLAYER_IMAGE = require('../../../assets/images/player/warrior.png');
+// TODO: Add different sprites for each combat style
+// const PLAYER_IMAGES: Record<CombatStyle, ImageSourcePropType> = {
+//   melee: require('../../../assets/images/player/warrior.png'),
+//   ranged: require('../../../assets/images/player/archer.png'),
+//   magic: require('../../../assets/images/player/mage.png'),
+// };
 const ENEMY_IMAGES: { [key: string]: ImageSourcePropType } = {
   slime_green: require('../../../assets/images/enemies/slime_green.png'),
   slime_blue: require('../../../assets/images/enemies/slime_blue.png'),
@@ -36,10 +43,11 @@ interface CharacterSpriteProps {
   size?: number;
   enemyType?: string;
   isBoss?: boolean;
+  combatStyle?: CombatStyle;
 }
 
 export const CharacterSprite = React.memo<CharacterSpriteProps>(
-  ({ isPlayer = true, isHurt = false, isDead = false, size = scale(100), enemyType = 'slime_green', isBoss = false }) => {
+  ({ isPlayer = true, isHurt = false, isDead = false, size = scale(100), enemyType = 'slime_green', isBoss = false, combatStyle = 'melee' }) => {
     // Bosses are 50% larger
     const actualSize = isBoss ? size * 1.5 : size;
     const opacityAnim = useRef(new Animated.Value(1)).current;
@@ -107,6 +115,19 @@ export const CharacterSprite = React.memo<CharacterSpriteProps>(
           ]}
           resizeMode="contain"
         />
+        {/* Combat style tint for player */}
+        {isPlayer && (
+          <View
+            style={[
+              styles.styleTint,
+              {
+                width: actualSize,
+                height: actualSize,
+                backgroundColor: COMBAT_STYLE_TINTS[combatStyle],
+              },
+            ]}
+          />
+        )}
         {/* Hurt overlay */}
         <Animated.View
           style={[
@@ -142,6 +163,11 @@ const styles = StyleSheet.create({
   hurtOverlay: {
     position: 'absolute',
     backgroundColor: '#ff0000',
+    borderRadius: scale(8),
+  },
+  styleTint: {
+    position: 'absolute',
+    opacity: 0.15,
     borderRadius: scale(8),
   },
 });
