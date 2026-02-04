@@ -322,6 +322,9 @@ export interface GameState {
   autoConsumeThreshold: number; // HP percentage (0.0-1.0)
   autoConsumeSlot: string | null; // Consumable ID to auto-use
 
+  // Auto-skill Settings
+  autoSkillEnabled: boolean; // Auto-use skills when off cooldown
+
   // UI State
   damagePopups: DamagePopup[];
   isPlayerDead: boolean;
@@ -466,6 +469,10 @@ export interface GameActions {
   setAutoConsume: (enabled: boolean, threshold?: number, slotId?: string | null) => void;
   tickAutoConsume: () => void;
 
+  // Auto-skill
+  setAutoSkill: (enabled: boolean) => void;
+  tickAutoSkill: () => void;
+
   // Save/Load
   saveGame: () => Promise<void>;
   loadGame: () => Promise<void>;
@@ -515,6 +522,8 @@ export interface SaveData {
   autoConsumeEnabled?: boolean;
   autoConsumeThreshold?: number;
   autoConsumeSlot?: string | null;
+  // Auto-skill (added in v1.3.2)
+  autoSkillEnabled?: boolean;
   // Crafting Progress (added in v1.3.0)
   craftingProgress?: CraftingProgress;
 }

@@ -185,4 +185,9 @@ export type LocaleStrings = {
     advantage: string;
     disadvantage: string;
   };
+  autoSkill: {
+    section: string;
+    enable: string;
+    desc: string;
+  };
 };

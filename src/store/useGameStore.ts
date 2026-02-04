@@ -416,6 +416,7 @@ const initialState: GameState = {
   autoConsumeEnabled: false,
   autoConsumeThreshold: 0.3, // 30% HP
   autoConsumeSlot: null,
+  autoSkillEnabled: false,
   damagePopups: [],
   isPlayerDead: false,
   showDeathModal: false,
@@ -452,6 +453,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     // Auto-consume healing items when HP is low
     get().tickAutoConsume();
+
+    // Auto-use skills when off cooldown
+    get().tickAutoSkill();
 
     if (state.stage.isTraveling) {
       // Traveling to next enemy
@@ -1342,6 +1346,37 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     // Use the consumable
     get().useConsumable(state.autoConsumeSlot);
+  },
+
+  // Auto-skill
+  setAutoSkill: (enabled: boolean) => {
+    set({ autoSkillEnabled: enabled });
+  },
+
+  tickAutoSkill: () => {
+    const state = get();
+
+    // Check if auto-skill is enabled
+    if (!state.autoSkillEnabled) return;
+
+    // Check if player is dead or traveling
+    if (state.isPlayerDead || state.stage.isTraveling) return;
+
+    // Check if there's an enemy to fight
+    if (!state.currentEnemy) return;
+
+    // Try to use each unlocked skill that is ready
+    const unlockedSkillIds = Object.entries(state.skills.unlockedSkills)
+      .filter(([_, level]) => level > 0)
+      .map(([id]) => id as SkillId);
+
+    for (const skillId of unlockedSkillIds) {
+      if (get().isSkillReady(skillId)) {
+        get().useSkill(skillId);
+        // Only use one skill per tick to avoid overwhelming
+        break;
+      }
+    }
   },
 
   // Equipment
@@ -2751,6 +2786,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       autoConsumeEnabled: state.autoConsumeEnabled,
       autoConsumeThreshold: state.autoConsumeThreshold,
       autoConsumeSlot: state.autoConsumeSlot,
+      autoSkillEnabled: state.autoSkillEnabled,
       craftingProgress: state.craftingProgress,
     };
 
@@ -2844,6 +2880,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         autoConsumeEnabled: data.autoConsumeEnabled || false,
         autoConsumeThreshold: data.autoConsumeThreshold || 0.3,
         autoConsumeSlot: data.autoConsumeSlot || null,
+        autoSkillEnabled: data.autoSkillEnabled || false,
         craftingProgress: savedCraftingProgress,
         monsterParts: savedMonsterParts,
       });

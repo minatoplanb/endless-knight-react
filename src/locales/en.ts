@@ -161,6 +161,11 @@ export const en: LocaleStrings = {
     advantage: '+100%',
     disadvantage: '-100%',
   },
+  autoSkill: {
+    section: 'Auto Skills',
+    enable: 'Auto-cast Skills',
+    desc: 'Automatically use skills when off cooldown',
+  },
   crafting: {
     level: 'Crafting Level',
     xp: 'XP',

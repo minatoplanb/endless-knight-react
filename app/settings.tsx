@@ -49,6 +49,8 @@ export default function SettingsPage() {
   const autoConsumeThreshold = useGameStore((state) => state.autoConsumeThreshold);
   const autoConsumeSlot = useGameStore((state) => state.autoConsumeSlot);
   const setAutoConsume = useGameStore((state) => state.setAutoConsume);
+  const autoSkillEnabled = useGameStore((state) => state.autoSkillEnabled);
+  const setAutoSkill = useGameStore((state) => state.setAutoSkill);
 
   // Cloud sync state
   const [isCloudSyncing, setIsCloudSyncing] = useState(false);
@@ -151,6 +153,10 @@ export default function SettingsPage() {
   const handleAutoConsumeToggle = useCallback((value: boolean) => {
     setAutoConsume(value);
   }, [setAutoConsume]);
+
+  const handleAutoSkillToggle = useCallback((value: boolean) => {
+    setAutoSkill(value);
+  }, [setAutoSkill]);
 
   const handleSelectConsumable = useCallback(() => {
     const healingItems = getHealingConsumables();
@@ -420,6 +426,22 @@ export default function SettingsPage() {
             </View>
             <Text style={styles.arrow}>›</Text>
           </TouchableOpacity>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>{t('autoSkill.section')}</Text>
+          <View style={styles.switchRow}>
+            <View style={styles.switchInfo}>
+              <Text style={styles.settingTitle}>{t('autoSkill.enable')}</Text>
+              <Text style={styles.settingDesc}>{t('autoSkill.desc')}</Text>
+            </View>
+            <Switch
+              value={autoSkillEnabled}
+              onValueChange={handleAutoSkillToggle}
+              trackColor={{ false: COLORS.bgLight, true: COLORS.buttonSuccess }}
+              thumbColor={autoSkillEnabled ? COLORS.text : COLORS.textDim}
+            />
+          </View>
         </View>
 
         <View style={styles.section}>

@@ -161,6 +161,11 @@ export const zh: LocaleStrings = {
     advantage: '+100%',
     disadvantage: '-100%',
   },
+  autoSkill: {
+    section: '自動技能',
+    enable: '自動施放技能',
+    desc: '技能冷卻完畢時自動使用',
+  },
   crafting: {
     level: '製作等級',
     xp: '經驗',
