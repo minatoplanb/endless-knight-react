@@ -2,7 +2,7 @@ import React from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
 import { COLORS, SPACING, LAYOUT } from '../src/constants/theme';
 import { TopBar } from '../src/components/ui/TopBar';
-import { EquipmentPanel, InventoryGrid, BackpackUpgradePanel } from '../src/components/equipment';
+import { EquipmentPanel, InventoryGrid, BackpackUpgradePanel, BulkSellPanel } from '../src/components/equipment';
 
 export default function EquipmentScreen() {
   return (
@@ -15,6 +15,7 @@ export default function EquipmentScreen() {
       >
         <EquipmentPanel />
         <BackpackUpgradePanel />
+        <BulkSellPanel />
         <InventoryGrid />
       </ScrollView>
     </View>

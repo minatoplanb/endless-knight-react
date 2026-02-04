@@ -35,8 +35,27 @@ export const RESOURCES: Record<ResourceType, ResourceDefinition> = {
   },
 };
 
-// Resource storage caps (can be upgraded later)
+// Resource storage caps
 export const RESOURCE_BASE_CAP = 500;
+
+// Resource cap upgrade system
+export const RESOURCE_CAP_UPGRADE = {
+  baseCapIncrease: 250,      // +250 per level
+  maxLevel: 10,              // Max 10 upgrades = +2500 total cap = 3000 max
+  baseCost: 5000,            // Starting cost
+  costMultiplier: 1.8,       // Cost growth per level
+};
+
+// Calculate resource cap based on upgrade level
+export const getResourceCap = (upgradeLevel: number): number => {
+  return RESOURCE_BASE_CAP + (upgradeLevel * RESOURCE_CAP_UPGRADE.baseCapIncrease);
+};
+
+// Calculate cost to upgrade resource cap
+export const getResourceCapUpgradeCost = (currentLevel: number): number => {
+  if (currentLevel >= RESOURCE_CAP_UPGRADE.maxLevel) return Infinity;
+  return Math.floor(RESOURCE_CAP_UPGRADE.baseCost * Math.pow(RESOURCE_CAP_UPGRADE.costMultiplier, currentLevel));
+};
 
 // All resource types for iteration
 export const ALL_RESOURCES: ResourceType[] = ['ore', 'wood', 'fish', 'herb'];

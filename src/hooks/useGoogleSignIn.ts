@@ -1,27 +1,12 @@
-// Hook for Google Sign-In using expo-auth-session
-// Uses useIdTokenAuthRequest for Firebase authentication
-import { useEffect, useState, useCallback } from 'react';
+// Hook for Google Sign-In - Web only (Android requires native SDK configuration)
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { Platform } from 'react-native';
-import * as Google from 'expo-auth-session/providers/google';
-import * as WebBrowser from 'expo-web-browser';
 import { firebaseService } from '../services/firebase';
 import { User } from 'firebase/auth';
 
-// Complete auth session for web
-if (Platform.OS === 'web') {
-  WebBrowser.maybeCompleteAuthSession();
-}
-
-// Google OAuth Client IDs from Google Cloud Console
-const GOOGLE_CLIENT_IDS = {
-  // Web client - used for both web and Android (Firebase requires web client for ID token)
-  webClientId: '1038383583773-8a6ocsqvc6mshp1aut93pknert3u3010.apps.googleusercontent.com',
-  // Android client - for native app verification
-  androidClientId: '1038383583773-61idf6cqhisi94irvht0i9tq4bpdccis.apps.googleusercontent.com',
-};
-
-// Google Sign-In is available on web and Android
-export const isGoogleSignInAvailable = Platform.OS === 'web' || Platform.OS === 'android';
+// Google Sign-In is only available on web for now
+// Android requires native Google Sign-In SDK configuration
+export const isGoogleSignInAvailable = Platform.OS === 'web';
 
 interface UseGoogleSignInReturn {
   signIn: () => Promise<void>;
@@ -38,12 +23,44 @@ export function useGoogleSignIn(): UseGoogleSignInReturn {
   const [error, setError] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [isAnonymous, setIsAnonymous] = useState(true);
+  const [isReady, setIsReady] = useState(false);
 
-  // Use the Google.useIdTokenAuthRequest hook - designed for Firebase ID token auth
-  const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-    clientId: GOOGLE_CLIENT_IDS.webClientId,
-    androidClientId: GOOGLE_CLIENT_IDS.androidClientId,
-  });
+  // Store auth modules in ref (only loaded on web)
+  const authModules = useRef<{
+    WebBrowser: typeof import('expo-web-browser') | null;
+  }>({ WebBrowser: null });
+
+  // Load auth modules only on web
+  useEffect(() => {
+    if (Platform.OS !== 'web') {
+      setIsReady(true);
+      return;
+    }
+
+    let mounted = true;
+
+    const loadModules = async () => {
+      try {
+        const WebBrowser = await import('expo-web-browser');
+        if (mounted) {
+          authModules.current = { WebBrowser };
+          WebBrowser.maybeCompleteAuthSession();
+          setIsReady(true);
+        }
+      } catch (err) {
+        console.warn('Failed to load auth modules:', err);
+        if (mounted) {
+          setIsReady(true);
+        }
+      }
+    };
+
+    loadModules();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   // Listen to Firebase auth state changes
   useEffect(() => {
@@ -54,45 +71,15 @@ export function useGoogleSignIn(): UseGoogleSignInReturn {
     return unsubscribe;
   }, []);
 
-  // Handle Google auth response
-  useEffect(() => {
-    const handleResponse = async () => {
-      if (response?.type === 'success') {
-        setIsLoading(true);
-        setError(null);
-
-        try {
-          const { id_token } = response.params;
-          console.log('Got ID token:', id_token ? 'yes' : 'no');
-
-          if (id_token) {
-            const firebaseUser = await firebaseService.signInWithGoogle(id_token);
-            if (!firebaseUser) {
-              setError('Failed to sign in with Google');
-            }
-          } else {
-            setError('No ID token received');
-          }
-        } catch (err) {
-          console.error('Firebase sign in error:', err);
-          setError(String(err));
-        } finally {
-          setIsLoading(false);
-        }
-      } else if (response?.type === 'error') {
-        console.error('Google auth error:', response.error);
-        setError(response.error?.message || 'Google sign in failed');
-      }
-    };
-
-    if (response) {
-      handleResponse();
-    }
-  }, [response]);
-
   const signIn = useCallback(async () => {
-    if (!request) {
-      setError('Google Auth not ready');
+    if (Platform.OS !== 'web') {
+      setError('Google Sign-In is only available on web version');
+      return;
+    }
+
+    const { WebBrowser } = authModules.current;
+    if (!WebBrowser) {
+      setError('Auth not loaded');
       return;
     }
 
@@ -100,18 +87,44 @@ export function useGoogleSignIn(): UseGoogleSignInReturn {
     setIsLoading(true);
 
     try {
-      const result = await promptAsync();
-      console.log('Prompt result type:', result?.type);
-      // Response will be handled by the useEffect above
-      if (result?.type === 'cancel' || result?.type === 'dismiss') {
-        setIsLoading(false);
+      const webClientId = '1038383583773-8a6ocsqvc6mshp1aut93pknert3u3010.apps.googleusercontent.com';
+      const redirectUri = typeof window !== 'undefined' ? window.location.origin : 'https://endlessknight.pages.dev';
+
+      const authUrl =
+        `https://accounts.google.com/o/oauth2/v2/auth?` +
+        `client_id=${webClientId}` +
+        `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+        `&response_type=token%20id_token` +
+        `&scope=openid%20profile%20email` +
+        `&nonce=${Math.random().toString(36).substring(2, 15)}`;
+
+      const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
+
+      if (result.type === 'success' && result.url) {
+        const fragment = result.url.split('#')[1] || '';
+        const params = new URLSearchParams(fragment);
+        const idToken = params.get('id_token');
+
+        if (idToken) {
+          const firebaseUser = await firebaseService.signInWithGoogle(idToken);
+          if (!firebaseUser) {
+            setError('Failed to sign in with Google');
+          }
+        } else {
+          setError('No ID token received');
+        }
+      } else if (result.type === 'cancel') {
+        // User cancelled
+      } else {
+        setError('Google sign in failed');
       }
     } catch (err) {
-      console.error('Google sign in prompt error:', err);
+      console.error('Google sign in error:', err);
       setError(String(err));
+    } finally {
       setIsLoading(false);
     }
-  }, [request, promptAsync]);
+  }, []);
 
   const signOut = useCallback(async () => {
     setIsLoading(true);
@@ -133,6 +146,6 @@ export function useGoogleSignIn(): UseGoogleSignInReturn {
     error,
     user,
     isAnonymous,
-    isAvailable: isGoogleSignInAvailable && !!request,
+    isAvailable: isGoogleSignInAvailable && isReady,
   };
 }

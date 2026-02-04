@@ -1,8 +1,9 @@
 import React from 'react';
-import { View, Text, StyleSheet, Modal, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Modal } from 'react-native';
 import { useGameStore } from '../../store/useGameStore';
 import { COLORS, SPACING, FONT_SIZES, scale } from '../../constants/theme';
 import { useTranslation } from '../../locales';
+import { PressableButton } from '../common/PressableButton';
 
 export const DeathModal = React.memo(() => {
   const { t } = useTranslation();
@@ -31,15 +32,13 @@ export const DeathModal = React.memo(() => {
             {t('modals.death.info').replace('{0}', String(resetStage))}
           </Text>
 
-          <Pressable
-            style={({ pressed }) => [
-              styles.button,
-              pressed && styles.buttonPressed,
-            ]}
+          <PressableButton
+            title={t('modals.death.revive')}
             onPress={resetAfterDeath}
-          >
-            <Text style={styles.buttonText}>{t('modals.death.revive')}</Text>
-          </Pressable>
+            variant="success"
+            size="large"
+            style={styles.button}
+          />
         </View>
       </View>
     </Modal>
@@ -82,19 +81,6 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.xl,
   },
   button: {
-    backgroundColor: COLORS.buttonSuccess,
-    paddingVertical: SPACING.md,
-    paddingHorizontal: SPACING.xxl,
-    borderRadius: scale(8),
     minWidth: scale(150),
-  },
-  buttonPressed: {
-    opacity: 0.8,
-  },
-  buttonText: {
-    fontSize: FONT_SIZES.lg,
-    color: COLORS.text,
-    fontWeight: 'bold',
-    textAlign: 'center',
   },
 });

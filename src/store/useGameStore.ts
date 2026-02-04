@@ -28,6 +28,7 @@ import {
   GameStatistics,
   QuestStateData,
   ActiveQuestData,
+  Rarity,
 } from '../types';
 import {
   getCombatMultiplier,
@@ -102,7 +103,7 @@ import {
   getWorkerInterval,
   getWorkerUpgradeCost as getWorkerUpgradeCostFromData,
 } from '../data/gathering';
-import { ALL_RESOURCES, RESOURCE_BASE_CAP } from '../data/resources';
+import { ALL_RESOURCES, RESOURCE_BASE_CAP, getResourceCap, getResourceCapUpgradeCost, RESOURCE_CAP_UPGRADE } from '../data/resources';
 import { ACHIEVEMENTS, getAchievementById } from '../data/achievements';
 import {
   getQuestById,
@@ -317,6 +318,7 @@ const createDefaultGatheringState = (): GatheringState => {
     workers,
     resources,
     resourceCaps,
+    resourceCapLevel: 0,
     lastGatherTime: Date.now(),
   };
 };
@@ -1326,6 +1328,112 @@ export const useGameStore = create<GameStore>((set, get) => ({
     return true;
   },
 
+  // Bulk sell by rarity
+  sellAllByRarity: (rarity: Rarity) => {
+    const state = get();
+    const itemsToSell = state.inventory.filter((i) => i.rarity === rarity);
+
+    if (itemsToSell.length === 0) return { count: 0, gold: 0 };
+
+    const rarityMultipliers: Record<string, number> = {
+      common: 10,
+      uncommon: 25,
+      rare: 75,
+      epic: 200,
+      legendary: 500,
+    };
+
+    let totalGold = 0;
+    for (const item of itemsToSell) {
+      const basePrice = rarityMultipliers[item.rarity] || 10;
+      const sellPrice = Math.floor(basePrice * (1 + item.level * 0.1));
+      totalGold += sellPrice;
+    }
+
+    const remainingInventory = state.inventory.filter((i) => i.rarity !== rarity);
+
+    set({
+      inventory: remainingInventory,
+      gold: state.gold + totalGold,
+      totalGoldEarned: state.totalGoldEarned + totalGold,
+      statistics: {
+        ...state.statistics,
+        totalGoldEarned: state.statistics.totalGoldEarned + totalGold,
+      },
+    });
+
+    return { count: itemsToSell.length, gold: totalGold };
+  },
+
+  // Bulk sell all items up to and including a rarity (e.g., common + uncommon)
+  sellAllUpToRarity: (maxRarity: Rarity) => {
+    const state = get();
+    const rarityOrder: Rarity[] = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+    const maxIndex = rarityOrder.indexOf(maxRarity);
+
+    const itemsToSell = state.inventory.filter((i) => {
+      const itemIndex = rarityOrder.indexOf(i.rarity);
+      return itemIndex <= maxIndex;
+    });
+
+    if (itemsToSell.length === 0) return { count: 0, gold: 0 };
+
+    const rarityMultipliers: Record<string, number> = {
+      common: 10,
+      uncommon: 25,
+      rare: 75,
+      epic: 200,
+      legendary: 500,
+    };
+
+    let totalGold = 0;
+    for (const item of itemsToSell) {
+      const basePrice = rarityMultipliers[item.rarity] || 10;
+      const sellPrice = Math.floor(basePrice * (1 + item.level * 0.1));
+      totalGold += sellPrice;
+    }
+
+    const remainingInventory = state.inventory.filter((i) => {
+      const itemIndex = rarityOrder.indexOf(i.rarity);
+      return itemIndex > maxIndex;
+    });
+
+    set({
+      inventory: remainingInventory,
+      gold: state.gold + totalGold,
+      totalGoldEarned: state.totalGoldEarned + totalGold,
+      statistics: {
+        ...state.statistics,
+        totalGoldEarned: state.statistics.totalGoldEarned + totalGold,
+      },
+    });
+
+    return { count: itemsToSell.length, gold: totalGold };
+  },
+
+  // Get inventory value by rarity for preview
+  getInventoryValueByRarity: (rarity: Rarity) => {
+    const state = get();
+    const items = state.inventory.filter((i) => i.rarity === rarity);
+
+    const rarityMultipliers: Record<string, number> = {
+      common: 10,
+      uncommon: 25,
+      rare: 75,
+      epic: 200,
+      legendary: 500,
+    };
+
+    let totalGold = 0;
+    for (const item of items) {
+      const basePrice = rarityMultipliers[item.rarity] || 10;
+      const sellPrice = Math.floor(basePrice * (1 + item.level * 0.1));
+      totalGold += sellPrice;
+    }
+
+    return { count: items.length, gold: totalGold };
+  },
+
   // Equipment Enhancement
   getEnhancementCost: (itemId: string) => {
     const state = get();
@@ -1748,6 +1856,37 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const state = get();
     const worker = state.gathering.workers[workerType];
     return getWorkerUpgradeCostFromData(worker.level);
+  },
+
+  // Resource cap upgrade
+  upgradeResourceCap: () => {
+    const state = get();
+    const currentLevel = state.gathering.resourceCapLevel;
+    const cost = getResourceCapUpgradeCost(currentLevel);
+
+    if (currentLevel >= RESOURCE_CAP_UPGRADE.maxLevel) return false;
+    if (state.gold < cost) return false;
+
+    const newCap = getResourceCap(currentLevel + 1);
+    const newResourceCaps: Record<ResourceType, number> = {} as Record<ResourceType, number>;
+    for (const resourceType of ALL_RESOURCES) {
+      newResourceCaps[resourceType] = newCap;
+    }
+
+    set({
+      gold: state.gold - cost,
+      gathering: {
+        ...state.gathering,
+        resourceCapLevel: currentLevel + 1,
+        resourceCaps: newResourceCaps,
+      },
+    });
+    return true;
+  },
+
+  getResourceCapUpgradeCost: () => {
+    const state = get();
+    return getResourceCapUpgradeCost(state.gathering.resourceCapLevel);
   },
 
   collectOfflineGathering: () => {

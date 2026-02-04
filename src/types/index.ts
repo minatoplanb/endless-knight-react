@@ -61,6 +61,7 @@ export interface GatheringState {
   workers: Record<WorkerType, Worker>;
   resources: Record<ResourceType, number>;
   resourceCaps: Record<ResourceType, number>;
+  resourceCapLevel: number; // Level of resource cap upgrade (0 = base cap)
   lastGatherTime: number; // For offline calculation
 }
 
@@ -326,6 +327,9 @@ export interface GameActions {
   addToInventory: (item: Equipment) => void;
   removeFromInventory: (itemId: string) => void;
   sellItem: (itemId: string) => boolean;
+  sellAllByRarity: (rarity: Rarity) => { count: number; gold: number };
+  sellAllUpToRarity: (maxRarity: Rarity) => { count: number; gold: number };
+  getInventoryValueByRarity: (rarity: Rarity) => { count: number; gold: number };
   getEquipmentBonus: () => EquipmentStats;
   setShowLootModal: (show: boolean) => void;
   dismissLootToast: () => void;

@@ -9,6 +9,33 @@
 ## [Unreleased]
 
 ### 新增
+- **批量販賣功能（Bulk Sell Feature）**
+  - 新增 `BulkSellPanel` 組件到裝備頁面
+  - 一鍵賣出普通+優良裝備
+  - 按稀有度分類販賣（普通、優良、稀有、史詩）
+  - 販賣前顯示數量和預計金幣
+  - 確認對話框防止誤操作
+
+- **按鈕觸控反饋優化（Button Press Feedback）**
+  - 新增 `PressableButton` 共用組件
+  - 按下時有彈性縮放動畫（0.92x）
+  - 支援 primary、success、danger、secondary 變體
+  - 已套用到 DeathModal 等重要按鈕
+
+- **採集工人等級擴展（Worker Level Extension）**
+  - 工人最高等級從 5 級擴展到 20 級
+  - 漸進式成本縮放，保持遊戲平衡
+  - 等級 1-5：早期遊戲，便宜
+  - 等級 6-10：中期遊戲
+  - 等級 11-15：後期遊戲
+  - 等級 16-20：終局遊戲
+
+- **資源上限升級系統（Resource Cap Upgrade）**
+  - 新增資源上限升級功能
+  - 基礎上限 500，每級 +250
+  - 最高 10 級，可達 3000 上限
+  - 成本倍率 1.8x
+
 - **Firebase 整合（Firebase Integration）**
   - 匿名登入（Anonymous Authentication）
   - 雲端存檔（Cloud Firestore）
