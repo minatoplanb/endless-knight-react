@@ -155,6 +155,12 @@ export const en: LocaleStrings = {
   achievements: {
     title: 'Achievements',
   },
+  combatStyle: {
+    title: 'Combat Style',
+    enemy: 'Enemy',
+    advantage: '+100%',
+    disadvantage: '-100%',
+  },
   crafting: {
     level: 'Crafting Level',
     xp: 'XP',

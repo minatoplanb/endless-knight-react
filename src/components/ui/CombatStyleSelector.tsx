@@ -8,8 +8,10 @@ import {
   CombatStyle,
 } from '../../data/combatStyles';
 import { COLORS } from '../../constants/theme';
+import { useTranslation } from '../../locales';
 
 export const CombatStyleSelector: React.FC = () => {
+  const { t, getDataName } = useTranslation();
   const combatStyle = useGameStore((state) => state.combatStyle);
   const currentEnemy = useGameStore((state) => state.currentEnemy);
   const setCombatStyle = useGameStore((state) => state.setCombatStyle);
@@ -44,7 +46,7 @@ export const CombatStyleSelector: React.FC = () => {
       >
         <Text style={styles.styleIcon}>{info.icon}</Text>
         <Text style={[styles.styleName, isSelected && { color: info.color }]}>
-          {info.name}
+          {getDataName('combatStyle', style, info.name)}
         </Text>
         {relationship && enemyStyle && (
           <View
@@ -55,7 +57,7 @@ export const CombatStyleSelector: React.FC = () => {
             ]}
           >
             <Text style={styles.relationshipText}>
-              {relationship === 'advantage' ? '+50%' : relationship === 'disadvantage' ? '-50%' : ''}
+              {relationship === 'advantage' ? t('combatStyle.advantage') : relationship === 'disadvantage' ? t('combatStyle.disadvantage') : ''}
             </Text>
           </View>
         )}
@@ -66,13 +68,13 @@ export const CombatStyleSelector: React.FC = () => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>戰鬥風格</Text>
+        <Text style={styles.title}>{t('combatStyle.title')}</Text>
         {currentEnemy && (
           <View style={styles.enemyStyleContainer}>
-            <Text style={styles.enemyLabel}>敵人: </Text>
+            <Text style={styles.enemyLabel}>{t('combatStyle.enemy')}: </Text>
             <Text style={styles.enemyStyle}>
               {getStyleInfo(currentEnemy.combatStyle).icon}{' '}
-              {getStyleInfo(currentEnemy.combatStyle).name}
+              {getDataName('combatStyle', currentEnemy.combatStyle, getStyleInfo(currentEnemy.combatStyle).name)}
             </Text>
           </View>
         )}

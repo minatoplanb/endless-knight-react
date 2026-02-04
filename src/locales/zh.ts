@@ -155,6 +155,12 @@ export const zh: LocaleStrings = {
   achievements: {
     title: '成就',
   },
+  combatStyle: {
+    title: '戰鬥風格',
+    enemy: '敵人',
+    advantage: '+100%',
+    disadvantage: '-100%',
+  },
   crafting: {
     level: '製作等級',
     xp: '經驗',

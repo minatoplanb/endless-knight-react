@@ -179,4 +179,10 @@ export type LocaleStrings = {
   achievements: {
     title: string;
   };
+  combatStyle: {
+    title: string;
+    enemy: string;
+    advantage: string;
+    disadvantage: string;
+  };
 };
