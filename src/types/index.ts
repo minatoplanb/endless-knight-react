@@ -350,6 +350,7 @@ export interface GameActions {
   tickGathering: () => void;
   upgradeWorker: (workerType: WorkerType) => boolean;
   getWorkerUpgradeCost: (workerType: WorkerType) => number;
+  upgradeResourceCap: () => boolean;
   collectOfflineGathering: () => void;
   dismissOfflineGathering: () => void;
 

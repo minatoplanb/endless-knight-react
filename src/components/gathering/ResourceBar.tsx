@@ -1,9 +1,12 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { COLORS, SPACING, FONT_SIZES, scale } from '../../constants/theme';
 import { ResourceType } from '../../types';
-import { RESOURCES, ALL_RESOURCES } from '../../data/resources';
+import { RESOURCES, ALL_RESOURCES, RESOURCE_CAP_UPGRADE, getResourceCapUpgradeCost } from '../../data/resources';
 import { useGameStore } from '../../store/useGameStore';
+import { PressableButton } from '../common/PressableButton';
+import { formatNumber } from '../../utils/format';
+import { useTranslation } from '../../locales';
 
 interface ResourceItemProps {
   resourceType: ResourceType;
@@ -27,14 +30,50 @@ const ResourceItem = React.memo(({ resourceType }: ResourceItemProps) => {
 });
 
 export const ResourceBar = React.memo(() => {
+  const { t, locale } = useTranslation();
+  const resourceCapLevel = useGameStore((state) => state.gathering.resourceCapLevel);
+  const gold = useGameStore((state) => state.gold);
+  const upgradeResourceCap = useGameStore((state) => state.upgradeResourceCap);
+
+  const upgradeCost = getResourceCapUpgradeCost(resourceCapLevel);
+  const isMaxLevel = resourceCapLevel >= RESOURCE_CAP_UPGRADE.maxLevel;
+  const canAfford = gold >= upgradeCost;
+
+  const handleUpgrade = useCallback(() => {
+    upgradeResourceCap();
+  }, [upgradeResourceCap]);
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>資源倉庫</Text>
+      <View style={styles.header}>
+        <Text style={styles.title}>
+          {locale === 'zh' ? '資源倉庫' : 'Storage'}
+        </Text>
+        <Text style={styles.levelText}>
+          {locale === 'zh' ? `等級 ${resourceCapLevel}/${RESOURCE_CAP_UPGRADE.maxLevel}` : `Lv ${resourceCapLevel}/${RESOURCE_CAP_UPGRADE.maxLevel}`}
+        </Text>
+      </View>
       <View style={styles.resourceGrid}>
         {ALL_RESOURCES.map((resourceType) => (
           <ResourceItem key={resourceType} resourceType={resourceType} />
         ))}
       </View>
+      {!isMaxLevel && (
+        <PressableButton
+          onPress={handleUpgrade}
+          disabled={!canAfford}
+          variant="primary"
+          size="small"
+          style={styles.upgradeButton}
+        >
+          <Text style={styles.upgradeText}>
+            {locale === 'zh' ? `📦 擴充容量 (+250)` : `📦 Expand (+250)`}
+          </Text>
+          <Text style={[styles.upgradeCost, !canAfford && styles.costDisabled]}>
+            💰 {formatNumber(upgradeCost)}
+          </Text>
+        </PressableButton>
+      )}
     </View>
   );
 });
@@ -46,10 +85,19 @@ const styles = StyleSheet.create({
     padding: SPACING.md,
     marginTop: SPACING.md,
   },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.sm,
+  },
   title: {
     color: COLORS.textDim,
     fontSize: FONT_SIZES.sm,
-    marginBottom: SPACING.sm,
+  },
+  levelText: {
+    color: COLORS.textDim,
+    fontSize: FONT_SIZES.xs,
   },
   resourceGrid: {
     flexDirection: 'row',
@@ -72,5 +120,23 @@ const styles = StyleSheet.create({
   },
   resourceFull: {
     color: COLORS.textGold,
+  },
+  upgradeButton: {
+    marginTop: SPACING.md,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  upgradeText: {
+    color: COLORS.text,
+    fontSize: FONT_SIZES.sm,
+    fontWeight: 'bold',
+  },
+  upgradeCost: {
+    color: COLORS.textGold,
+    fontSize: FONT_SIZES.sm,
+    fontWeight: 'bold',
+  },
+  costDisabled: {
+    color: COLORS.textDim,
   },
 });

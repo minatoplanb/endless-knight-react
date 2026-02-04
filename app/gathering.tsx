@@ -4,8 +4,11 @@ import { COLORS, SPACING, FONT_SIZES, scale, LAYOUT } from '../src/constants/the
 import { TopBar } from '../src/components/ui/TopBar';
 import { WorkerCard, ResourceBar } from '../src/components/gathering';
 import { ALL_WORKERS } from '../src/data/gathering';
+import { useTranslation } from '../src/locales';
 
 export default function GatheringScreen() {
+  const { locale } = useTranslation();
+
   return (
     <View style={styles.container}>
       <TopBar />
@@ -14,8 +17,12 @@ export default function GatheringScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.title}>採集</Text>
-        <Text style={styles.subtitle}>工人在背景自動採集資源</Text>
+        <Text style={styles.title}>
+          {locale === 'zh' ? '採集' : 'Gathering'}
+        </Text>
+        <Text style={styles.subtitle}>
+          {locale === 'zh' ? '工人在背景自動採集資源' : 'Workers gather resources in the background'}
+        </Text>
 
         <View style={styles.workersGrid}>
           {ALL_WORKERS.map((workerType) => (
