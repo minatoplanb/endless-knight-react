@@ -1,9 +1,10 @@
-import React, { useCallback } from 'react';
-import { View, Text, StyleSheet, Pressable, TouchableOpacity } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { View, Text, StyleSheet, Pressable, TouchableOpacity, Modal } from 'react-native';
 import { useGameStore } from '../../store/useGameStore';
 import { getConsumableById } from '../../data/consumables';
-import { SKILLS, ALL_SKILL_IDS } from '../../data/skills';
+import { SKILLS, ALL_SKILL_IDS, getSkillDescription, getSkillEffectValue } from '../../data/skills';
 import { COLORS, FONT_SIZES, scale } from '../../constants/theme';
+import { useTranslation } from '../../locales';
 import type { SkillId } from '../../types';
 
 // Small skill button for compact display
@@ -13,7 +14,8 @@ const SkillButton = React.memo<{
   cooldownRemaining: number;
   isReady: boolean;
   onPress: () => void;
-}>(({ skillId, level, cooldownRemaining, isReady, onPress }) => {
+  onLongPress: () => void;
+}>(({ skillId, level, cooldownRemaining, isReady, onPress, onLongPress }) => {
   const skill = SKILLS[skillId];
   const isUnlocked = level > 0;
 
@@ -30,6 +32,8 @@ const SkillButton = React.memo<{
         !isReady && isUnlocked && styles.onCooldown,
       ]}
       onPress={onPress}
+      onLongPress={onLongPress}
+      delayLongPress={300}
       disabled={!isUnlocked || !isReady}
     >
       {isUnlocked && !isReady && (
@@ -71,6 +75,7 @@ const SKILL_BUFF_ICONS: Record<string, string> = {
 };
 
 export const ActionBar = React.memo(() => {
+  const { t, getDataName } = useTranslation();
   const skills = useGameStore((state) => state.skills);
   const consumables = useGameStore((state) => state.consumables);
   const activeBuffs = useGameStore((state) => state.activeBuffs);
@@ -80,9 +85,16 @@ export const ActionBar = React.memo(() => {
   const isSkillReady = useGameStore((state) => state.isSkillReady);
   const getSkillCooldownRemaining = useGameStore((state) => state.getSkillCooldownRemaining);
 
+  // Skill tooltip state
+  const [tooltipSkill, setTooltipSkill] = useState<SkillId | null>(null);
+
   const handleSkillPress = useCallback((skillId: SkillId) => {
     useSkill(skillId);
   }, [useSkill]);
+
+  const handleSkillLongPress = useCallback((skillId: SkillId) => {
+    setTooltipSkill(skillId);
+  }, []);
 
   const handleConsumablePress = useCallback((consumableId: string) => {
     useConsumable(consumableId);
@@ -143,9 +155,56 @@ export const ActionBar = React.memo(() => {
             cooldownRemaining={getSkillCooldownRemaining(skillId)}
             isReady={isSkillReady(skillId)}
             onPress={() => handleSkillPress(skillId)}
+            onLongPress={() => handleSkillLongPress(skillId)}
           />
         ))}
       </View>
+
+      {/* Skill Tooltip Modal */}
+      <Modal
+        visible={tooltipSkill !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setTooltipSkill(null)}
+      >
+        <Pressable
+          style={styles.tooltipOverlay}
+          onPress={() => setTooltipSkill(null)}
+        >
+          {tooltipSkill && (
+            <View style={styles.tooltipContainer}>
+              <View style={styles.tooltipHeader}>
+                <Text style={styles.tooltipIcon}>{SKILLS[tooltipSkill].icon}</Text>
+                <View>
+                  <Text style={styles.tooltipName}>
+                    {getDataName('skill', tooltipSkill, SKILLS[tooltipSkill].name)}
+                  </Text>
+                  <Text style={styles.tooltipLevel}>
+                    Lv.{skills.unlockedSkills[tooltipSkill]}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.tooltipDivider} />
+              <Text style={styles.tooltipEffect}>
+                {getSkillDescription(SKILLS[tooltipSkill], skills.unlockedSkills[tooltipSkill])}
+              </Text>
+              <View style={styles.tooltipStats}>
+                <Text style={styles.tooltipStat}>
+                  ⏱️ {SKILLS[tooltipSkill].cooldown / 1000}s
+                </Text>
+                {skills.unlockedSkills[tooltipSkill] < SKILLS[tooltipSkill].maxLevel && (
+                  <Text style={styles.tooltipStat}>
+                    ⬆️ +{SKILLS[tooltipSkill].effectPerLevel}
+                  </Text>
+                )}
+              </View>
+              <Text style={styles.tooltipHint}>
+                {t('common.cancel')}
+              </Text>
+            </View>
+          )}
+        </Pressable>
+      </Modal>
     </View>
   );
 });
@@ -247,5 +306,64 @@ const styles = StyleSheet.create({
     fontSize: scale(10),
     color: COLORS.textGold,
     fontWeight: 'bold',
+  },
+  // Tooltip styles
+  tooltipOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  tooltipContainer: {
+    backgroundColor: COLORS.panel,
+    borderRadius: scale(12),
+    padding: scale(16),
+    minWidth: scale(200),
+    maxWidth: scale(280),
+    borderWidth: 2,
+    borderColor: COLORS.buttonPrimary,
+  },
+  tooltipHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(12),
+  },
+  tooltipIcon: {
+    fontSize: scale(32),
+  },
+  tooltipName: {
+    fontSize: FONT_SIZES.lg,
+    fontWeight: 'bold',
+    color: COLORS.text,
+  },
+  tooltipLevel: {
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.textGold,
+  },
+  tooltipDivider: {
+    height: 1,
+    backgroundColor: COLORS.textDim,
+    marginVertical: scale(10),
+    opacity: 0.3,
+  },
+  tooltipEffect: {
+    fontSize: FONT_SIZES.md,
+    color: COLORS.text,
+    marginBottom: scale(8),
+  },
+  tooltipStats: {
+    flexDirection: 'row',
+    gap: scale(16),
+    marginBottom: scale(12),
+  },
+  tooltipStat: {
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.textDim,
+  },
+  tooltipHint: {
+    fontSize: FONT_SIZES.xs,
+    color: COLORS.textDim,
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
 });
