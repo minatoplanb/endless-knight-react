@@ -20,7 +20,14 @@
   - 新增 `PressableButton` 共用組件
   - 按下時有彈性縮放動畫（0.92x）
   - 支援 primary、success、danger、secondary 變體
-  - 已套用到 DeathModal 等重要按鈕
+  - 已套用到 DeathModal、OfflineModal、WorkerCard、ResourceBar
+
+- **i18n 擴展（i18n Extensions）**
+  - 採集頁面：標題和副標題支援中英文
+  - 工人卡片：採集速率支援中英文
+  - 離線獎勵彈窗：完整中英文支援
+  - 掉落通知：完整中英文支援（稀有度、欄位、屬性）
+  - 新增 RARITY_NAMES_EN、SLOT_NAMES_EN 常量
 
 - **採集工人等級擴展（Worker Level Extension）**
   - 工人最高等級從 5 級擴展到 20 級
