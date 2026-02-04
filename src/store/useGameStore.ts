@@ -7,6 +7,7 @@ import {
   Enemy,
   DamagePopup,
   LootNotification,
+  CombatLogEntry,
   SaveData,
   Equipment,
   EquipmentSlotType,
@@ -421,6 +422,7 @@ const initialState: GameState = {
   autoSkillEnabled: false,
   damagePopups: [],
   lootNotifications: [],
+  combatLog: [],
   isPlayerDead: false,
   showDeathModal: false,
   showOfflineModal: false,
@@ -1038,6 +1040,24 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set({
       lootNotifications: get().lootNotifications.filter((n) => n.id !== id),
     });
+  },
+
+  // Combat log
+  addCombatLogEntry: (entry) => {
+    const newEntry: CombatLogEntry = {
+      ...entry,
+      id: `log_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      timestamp: Date.now(),
+    };
+
+    const currentLog = get().combatLog;
+    // Keep only the last 50 entries
+    const newLog = [...currentLog, newEntry].slice(-50);
+    set({ combatLog: newLog });
+  },
+
+  clearCombatLog: () => {
+    set({ combatLog: [] });
   },
 
   // UI

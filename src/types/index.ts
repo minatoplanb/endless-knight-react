@@ -234,6 +234,13 @@ export interface LootNotification {
   timestamp: number;
 }
 
+export interface CombatLogEntry {
+  id: string;
+  message: string;
+  type: 'damage' | 'heal' | 'crit' | 'kill' | 'death' | 'skill' | 'buff';
+  timestamp: number;
+}
+
 // Statistics tracking
 export interface GameStatistics {
   totalEnemiesKilled: number;
@@ -337,6 +344,7 @@ export interface GameState {
   // UI State
   damagePopups: DamagePopup[];
   lootNotifications: LootNotification[];
+  combatLog: CombatLogEntry[];
   isPlayerDead: boolean;
   showDeathModal: boolean;
   showOfflineModal: boolean;
@@ -458,6 +466,10 @@ export interface GameActions {
   // Loot notifications
   addLootNotification: (notification: Omit<LootNotification, 'id' | 'timestamp'>) => void;
   removeLootNotification: (id: string) => void;
+
+  // Combat log
+  addCombatLogEntry: (entry: Omit<CombatLogEntry, 'id' | 'timestamp'>) => void;
+  clearCombatLog: () => void;
 
   // UI
   setShowDeathModal: (show: boolean) => void;
