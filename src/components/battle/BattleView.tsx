@@ -148,6 +148,7 @@ export const BattleView = React.memo(() => {
   const removeLootNotification = useGameStore((state) => state.removeLootNotification);
   const stage = useGameStore((state) => state.stage);
   const playerCombatStyle = useGameStore((state) => state.combatStyle);
+  const killStreak = useGameStore((state) => state.statistics.currentKillStreak);
 
   const [playerHurt, setPlayerHurt] = useState(false);
   const [enemyHurt, setEnemyHurt] = useState(false);
@@ -198,6 +199,13 @@ export const BattleView = React.memo(() => {
           playerStyle={playerCombatStyle}
           enemyStyle={enemy.combatStyle}
         />
+      )}
+
+      {/* Kill Streak Badge - only show if streak >= 5 */}
+      {killStreak >= 5 && !stage.isTraveling && (
+        <View style={styles.killStreakContainer}>
+          <Text style={styles.killStreakText}>🔥 {killStreak}</Text>
+        </View>
       )}
 
       {/* Traveling Indicator - centered overlay */}
@@ -450,5 +458,20 @@ const styles = StyleSheet.create({
     right: SPACING.md,
     alignItems: 'flex-end',
     pointerEvents: 'none',
+  },
+  killStreakContainer: {
+    position: 'absolute',
+    top: SPACING.sm,
+    right: SPACING.md,
+    backgroundColor: 'rgba(239, 68, 68, 0.9)',
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    borderRadius: scale(12),
+    zIndex: 10,
+  },
+  killStreakText: {
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.text,
+    fontWeight: 'bold',
   },
 });
