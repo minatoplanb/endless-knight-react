@@ -1,12 +1,14 @@
-// Hook for Google Sign-In - Web and Android supported
+// Hook for Google Sign-In using expo-auth-session
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { Platform } from 'react-native';
 import { firebaseService } from '../services/firebase';
 import { User } from 'firebase/auth';
 
-// Google OAuth Client IDs
+// Google OAuth Client IDs from Google Cloud Console
 const GOOGLE_CLIENT_IDS = {
+  // Web client - for browser-based OAuth
   web: '1038383583773-8a6ocsqvc6mshp1aut93pknert3u3010.apps.googleusercontent.com',
+  // Android client - for native Android OAuth (uses package name + SHA-1)
   android: '1038383583773-61idf6cqhisi94irvht0i9tq4bpdccis.apps.googleusercontent.com',
 };
 
@@ -29,15 +31,12 @@ export function useGoogleSignIn(): UseGoogleSignInReturn {
   const [user, setUser] = useState<User | null>(null);
   const [isAnonymous, setIsAnonymous] = useState(true);
   const [isReady, setIsReady] = useState(false);
+  const [promptAsync, setPromptAsync] = useState<(() => Promise<any>) | null>(null);
 
-  // Store auth modules in ref
-  const authModules = useRef<{
-    Google: typeof import('expo-auth-session/providers/google') | null;
-    WebBrowser: typeof import('expo-web-browser') | null;
-    AuthSession: typeof import('expo-auth-session') | null;
-  }>({ Google: null, WebBrowser: null, AuthSession: null });
+  // Store response for handling
+  const responseRef = useRef<any>(null);
 
-  // Load Google Auth modules
+  // Load Google Auth modules and create auth request
   useEffect(() => {
     if (!isGoogleSignInAvailable) {
       setIsReady(true);
@@ -46,28 +45,69 @@ export function useGoogleSignIn(): UseGoogleSignInReturn {
 
     let mounted = true;
 
-    const loadModules = async () => {
+    const initGoogleAuth = async () => {
       try {
-        const [Google, WebBrowser, AuthSession] = await Promise.all([
-          import('expo-auth-session/providers/google'),
-          import('expo-web-browser'),
-          import('expo-auth-session'),
-        ]);
+        const Google = await import('expo-auth-session/providers/google');
+        const WebBrowser = await import('expo-web-browser');
+
+        WebBrowser.maybeCompleteAuthSession();
 
         if (mounted) {
-          authModules.current = { Google, WebBrowser, AuthSession };
-          WebBrowser.maybeCompleteAuthSession();
+          // Create a function that will initiate the auth request
+          const doPrompt = async () => {
+            // Use Google.useIdTokenAuthRequest for ID token flow
+            const config = {
+              webClientId: GOOGLE_CLIENT_IDS.web,
+              androidClientId: GOOGLE_CLIENT_IDS.android,
+            };
+
+            // For standalone apps, we need to use AuthRequest directly
+            const { AuthRequest } = await import('expo-auth-session');
+
+            const discovery = {
+              authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
+              tokenEndpoint: 'https://oauth2.googleapis.com/token',
+              revocationEndpoint: 'https://oauth2.googleapis.com/revoke',
+            };
+
+            const clientId = Platform.OS === 'android'
+              ? GOOGLE_CLIENT_IDS.android
+              : GOOGLE_CLIENT_IDS.web;
+
+            const { makeRedirectUri } = await import('expo-auth-session');
+            const redirectUri = makeRedirectUri({
+              scheme: 'com.endlessknight.game',
+            });
+
+            console.log('Google Auth - Client ID:', clientId);
+            console.log('Google Auth - Redirect URI:', redirectUri);
+
+            const request = new AuthRequest({
+              clientId,
+              scopes: ['openid', 'profile', 'email'],
+              redirectUri,
+              responseType: 'id_token' as any,
+              extraParams: {
+                nonce: Math.random().toString(36).substring(2, 15),
+              },
+            });
+
+            const result = await request.promptAsync(discovery);
+            return result;
+          };
+
+          setPromptAsync(() => doPrompt);
           setIsReady(true);
         }
       } catch (err) {
-        console.warn('Failed to load Google Auth modules:', err);
+        console.warn('Failed to initialize Google Auth:', err);
         if (mounted) {
           setIsReady(true);
         }
       }
     };
 
-    loadModules();
+    initGoogleAuth();
 
     return () => {
       mounted = false;
@@ -84,14 +124,8 @@ export function useGoogleSignIn(): UseGoogleSignInReturn {
   }, []);
 
   const signIn = useCallback(async () => {
-    if (!isGoogleSignInAvailable) {
-      setError('Google Sign-In is not available on this platform');
-      return;
-    }
-
-    const { Google, WebBrowser, AuthSession } = authModules.current;
-    if (!Google || !WebBrowser || !AuthSession) {
-      setError('Google Auth not loaded');
+    if (!promptAsync) {
+      setError('Google Auth not ready');
       return;
     }
 
@@ -99,87 +133,37 @@ export function useGoogleSignIn(): UseGoogleSignInReturn {
     setIsLoading(true);
 
     try {
-      if (Platform.OS === 'android') {
-        // Android: Use expo-auth-session with Android client ID
-        const redirectUri = AuthSession.makeRedirectUri({
-          scheme: 'endless-knight',
-        });
+      const result = await promptAsync();
 
-        const authUrl =
-          `https://accounts.google.com/o/oauth2/v2/auth?` +
-          `client_id=${GOOGLE_CLIENT_IDS.android}` +
-          `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-          `&response_type=id_token` +
-          `&scope=openid%20profile%20email` +
-          `&nonce=${Math.random().toString(36).substring(2, 15)}`;
+      console.log('Google Auth Result:', result);
 
-        const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
+      if (result?.type === 'success') {
+        // Extract id_token from params or URL
+        let idToken = result.params?.id_token;
 
-        if (result.type === 'success' && result.url) {
-          // Extract id_token from URL fragment or query
-          let idToken: string | null = null;
-
-          // Try fragment first (implicit flow)
+        if (!idToken && result.url) {
+          // Try to extract from URL fragment
           const fragment = result.url.split('#')[1];
           if (fragment) {
             const params = new URLSearchParams(fragment);
             idToken = params.get('id_token');
           }
-
-          // Try query params if no fragment
-          if (!idToken) {
-            const query = result.url.split('?')[1]?.split('#')[0];
-            if (query) {
-              const params = new URLSearchParams(query);
-              idToken = params.get('id_token');
-            }
-          }
-
-          if (idToken) {
-            const firebaseUser = await firebaseService.signInWithGoogle(idToken);
-            if (!firebaseUser) {
-              setError('Failed to sign in with Google');
-            }
-          } else {
-            setError('No ID token received');
-          }
-        } else if (result.type === 'cancel') {
-          // User cancelled, no error
-        } else {
-          setError('Google sign in failed');
         }
+
+        if (idToken) {
+          const firebaseUser = await firebaseService.signInWithGoogle(idToken);
+          if (!firebaseUser) {
+            setError('Failed to sign in with Google');
+          }
+        } else {
+          console.log('No ID token in result:', result);
+          setError('No ID token received');
+        }
+      } else if (result?.type === 'cancel' || result?.type === 'dismiss') {
+        // User cancelled
       } else {
-        // Web: Use web client ID with window.location.origin
-        const redirectUri = typeof window !== 'undefined' ? window.location.origin : 'https://endlessknight.pages.dev';
-
-        const authUrl =
-          `https://accounts.google.com/o/oauth2/v2/auth?` +
-          `client_id=${GOOGLE_CLIENT_IDS.web}` +
-          `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-          `&response_type=token%20id_token` +
-          `&scope=openid%20profile%20email` +
-          `&nonce=${Math.random().toString(36).substring(2, 15)}`;
-
-        const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
-
-        if (result.type === 'success' && result.url) {
-          const fragment = result.url.split('#')[1] || '';
-          const params = new URLSearchParams(fragment);
-          const idToken = params.get('id_token');
-
-          if (idToken) {
-            const firebaseUser = await firebaseService.signInWithGoogle(idToken);
-            if (!firebaseUser) {
-              setError('Failed to sign in with Google');
-            }
-          } else {
-            setError('No ID token received');
-          }
-        } else if (result.type === 'cancel') {
-          // User cancelled
-        } else {
-          setError('Google sign in failed');
-        }
+        console.log('Auth failed with result:', result);
+        setError('Google sign in failed');
       }
     } catch (err) {
       console.error('Google sign in error:', err);
@@ -187,7 +171,7 @@ export function useGoogleSignIn(): UseGoogleSignInReturn {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [promptAsync]);
 
   const signOut = useCallback(async () => {
     setIsLoading(true);
