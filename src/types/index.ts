@@ -385,6 +385,7 @@ export interface GameActions {
 
   // Equipment Enhancement
   enhanceEquipment: (itemId: string) => { success: boolean; message: string };
+  enhanceAllEquipped: () => { results: { slot: string; success: boolean; message: string }[]; summary: string };
   canEnhanceEquipment: (itemId: string) => boolean;
   getEnhancementCost: (itemId: string) => { resources: Partial<Record<ResourceType, number>>; gold: number } | null;
 

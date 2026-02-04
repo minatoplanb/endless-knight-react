@@ -1,16 +1,18 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Alert } from 'react-native';
 import { useGameStore } from '../../store/useGameStore';
 import { COLORS, SPACING, FONT_SIZES, scale } from '../../constants/theme';
 import { Equipment, EquipmentSlotType } from '../../types';
 import { EquipmentSlot } from './EquipmentSlot';
 import { ItemDetail } from './ItemDetail';
+import { PressableButton } from '../common/PressableButton';
 
 const SLOT_ORDER: EquipmentSlotType[] = ['helmet', 'amulet', 'weapon', 'armor', 'shield', 'ring'];
 
 export const EquipmentPanel = React.memo(() => {
   const equipment = useGameStore((state) => state.equipment);
   const unequipItem = useGameStore((state) => state.unequipItem);
+  const enhanceAllEquipped = useGameStore((state) => state.enhanceAllEquipped);
   const [selectedSlot, setSelectedSlot] = useState<EquipmentSlotType | null>(null);
   const [selectedItem, setSelectedItem] = useState<Equipment | null>(null);
 
@@ -37,9 +39,40 @@ export const EquipmentPanel = React.memo(() => {
     setSelectedItem(null);
   }, []);
 
+  const handleEnhanceAll = useCallback(() => {
+    const equippedCount = Object.values(equipment).filter(Boolean).length;
+    if (equippedCount === 0) {
+      Alert.alert('沒有裝備', '請先裝備一些物品');
+      return;
+    }
+
+    Alert.alert(
+      '強化全部裝備',
+      `確定要強化所有已裝備的 ${equippedCount} 件物品嗎？\n\n每件物品將消耗各自的強化費用。`,
+      [
+        { text: '取消', style: 'cancel' },
+        {
+          text: '強化全部',
+          onPress: () => {
+            const result = enhanceAllEquipped();
+            Alert.alert('強化結果', result.summary);
+          },
+        },
+      ]
+    );
+  }, [equipment, enhanceAllEquipped]);
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>裝備</Text>
+      <View style={styles.header}>
+        <Text style={styles.title}>裝備</Text>
+        <PressableButton
+          onPress={handleEnhanceAll}
+          title="⬆️ 強化全部"
+          variant="primary"
+          size="small"
+        />
+      </View>
       <View style={styles.slotsGrid}>
         {/* Top row: helmet, amulet */}
         <View style={styles.row}>
@@ -108,12 +141,16 @@ const styles = StyleSheet.create({
     padding: SPACING.md,
     marginBottom: SPACING.md,
   },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.md,
+  },
   title: {
     fontSize: FONT_SIZES.lg,
     fontWeight: 'bold',
     color: COLORS.text,
-    marginBottom: SPACING.md,
-    textAlign: 'center',
   },
   slotsGrid: {
     alignItems: 'center',

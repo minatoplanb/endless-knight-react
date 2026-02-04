@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { useGameStore } from '../src/store/useGameStore';
 import { COLORS, SPACING, FONT_SIZES, scale } from '../src/constants/theme';
 import { TopBar } from '../src/components/ui/TopBar';
+import { PressableButton } from '../src/components/common/PressableButton';
 import { getQuestById, QuestDefinition } from '../src/data/quests';
 import { ActiveQuestData, ResourceType } from '../src/types';
 
@@ -103,15 +104,13 @@ const QuestCard = React.memo(({ quest, questDef, onClaim }: QuestCardProps) => {
 
       {/* Claim Button */}
       {quest.completed && !quest.claimed && (
-        <Pressable
-          style={({ pressed }) => [
-            styles.claimButton,
-            pressed && styles.claimButtonPressed,
-          ]}
+        <PressableButton
           onPress={onClaim}
-        >
-          <Text style={styles.claimButtonText}>領取獎勵</Text>
-        </Pressable>
+          title="領取獎勵"
+          variant="success"
+          size="medium"
+          style={styles.claimButton}
+        />
       )}
     </View>
   );
@@ -355,19 +354,6 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.xs,
   },
   claimButton: {
-    backgroundColor: COLORS.buttonSuccess,
-    paddingVertical: SPACING.sm,
-    paddingHorizontal: SPACING.lg,
-    borderRadius: scale(8),
-    alignItems: 'center',
     marginTop: SPACING.sm,
-  },
-  claimButtonPressed: {
-    opacity: 0.8,
-  },
-  claimButtonText: {
-    fontSize: FONT_SIZES.md,
-    color: COLORS.text,
-    fontWeight: 'bold',
   },
 });

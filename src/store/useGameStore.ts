@@ -1726,6 +1726,29 @@ export const useGameStore = create<GameStore>((set, get) => ({
     };
   },
 
+  // Enhance all equipped items at once
+  enhanceAllEquipped: () => {
+    const state = get();
+    const slots: EquipmentSlotType[] = ['weapon', 'helmet', 'armor', 'shield', 'ring', 'amulet'];
+    const results: { slot: string; success: boolean; message: string }[] = [];
+
+    for (const slot of slots) {
+      const item = state.equipment[slot];
+      if (item) {
+        const result = get().enhanceEquipment(item.id);
+        results.push({ slot, ...result });
+      }
+    }
+
+    const successCount = results.filter(r => r.success).length;
+    const totalAttempts = results.length;
+
+    return {
+      results,
+      summary: `強化 ${successCount}/${totalAttempts} 件成功`,
+    };
+  },
+
   getEquipmentBonus: (): EquipmentStats => {
     const state = get();
     const bonus: EquipmentStats = {

@@ -162,6 +162,7 @@ export const BulkSellPanel: React.FC = () => {
       <View style={styles.rarityGrid}>
         {RARITY_ORDER.slice(0, 4).map((rarity) => {
           const { count, gold } = rarityCounts[rarity];
+          const buttonTitle = `${RARITY_NAMES[rarity]}\n${count}${locale === 'zh' ? '件' : ''} 💰${gold.toLocaleString()}`;
           return (
             <View key={rarity} style={styles.rarityItem}>
               <PressableButton
@@ -169,20 +170,10 @@ export const BulkSellPanel: React.FC = () => {
                 disabled={count === 0}
                 variant="secondary"
                 size="small"
-                style={[styles.rarityButton, { borderColor: RARITY_COLORS[rarity] }]}
-              >
-                <View style={styles.rarityContent}>
-                  <Text style={[styles.rarityName, { color: RARITY_COLORS[rarity] }]}>
-                    {RARITY_NAMES[rarity]}
-                  </Text>
-                  <Text style={styles.rarityCount}>
-                    {count} {locale === 'zh' ? '件' : ''}
-                  </Text>
-                  <Text style={styles.rarityGold}>
-                    💰 {gold.toLocaleString()}
-                  </Text>
-                </View>
-              </PressableButton>
+                title={buttonTitle}
+                textStyle={{ color: RARITY_COLORS[rarity], textAlign: 'center' }}
+                style={styles.rarityButton}
+              />
             </View>
           );
         })}
@@ -226,22 +217,7 @@ const styles = StyleSheet.create({
   },
   rarityButton: {
     width: '100%',
-  },
-  rarityContent: {
-    alignItems: 'center',
-  },
-  rarityName: {
-    fontSize: FONT_SIZES.sm,
-    fontWeight: 'bold',
-  },
-  rarityCount: {
-    fontSize: FONT_SIZES.xs,
-    color: COLORS.textDim,
-    marginTop: SPACING.xs,
-  },
-  rarityGold: {
-    fontSize: FONT_SIZES.xs,
-    color: COLORS.textGold,
+    minHeight: scale(60),
   },
 });
 
