@@ -31,12 +31,13 @@ const ResourceItem = React.memo(({ resourceType }: ResourceItemProps) => {
 
 export const ResourceBar = React.memo(() => {
   const { t, locale } = useTranslation();
-  const resourceCapLevel = useGameStore((state) => state.gathering.resourceCapLevel);
+  const resourceCapLevel = useGameStore((state) => state.gathering.resourceCapLevel ?? 0);
   const gold = useGameStore((state) => state.gold);
   const upgradeResourceCap = useGameStore((state) => state.upgradeResourceCap);
 
-  const upgradeCost = getResourceCapUpgradeCost(resourceCapLevel);
-  const isMaxLevel = resourceCapLevel >= RESOURCE_CAP_UPGRADE.maxLevel;
+  const currentLevel = resourceCapLevel ?? 0;
+  const upgradeCost = getResourceCapUpgradeCost(currentLevel);
+  const isMaxLevel = currentLevel >= RESOURCE_CAP_UPGRADE.maxLevel;
   const canAfford = gold >= upgradeCost;
 
   const handleUpgrade = useCallback(() => {
@@ -50,7 +51,7 @@ export const ResourceBar = React.memo(() => {
           {locale === 'zh' ? '資源倉庫' : 'Storage'}
         </Text>
         <Text style={styles.levelText}>
-          {locale === 'zh' ? `等級 ${resourceCapLevel}/${RESOURCE_CAP_UPGRADE.maxLevel}` : `Lv ${resourceCapLevel}/${RESOURCE_CAP_UPGRADE.maxLevel}`}
+          {locale === 'zh' ? `等級 ${currentLevel}/${RESOURCE_CAP_UPGRADE.maxLevel}` : `Lv ${currentLevel}/${RESOURCE_CAP_UPGRADE.maxLevel}`}
         </Text>
       </View>
       <View style={styles.resourceGrid}>

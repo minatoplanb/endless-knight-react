@@ -2461,7 +2461,15 @@ export const useGameStore = create<GameStore>((set, get) => ({
       };
 
       // Handle migration from older saves without gathering system
-      const savedGathering = data.gathering || createDefaultGatheringState();
+      const defaultGathering = createDefaultGatheringState();
+      const savedGathering = data.gathering
+        ? {
+            ...defaultGathering,
+            ...data.gathering,
+            // Ensure resourceCapLevel exists (added in v1.2.0)
+            resourceCapLevel: data.gathering.resourceCapLevel ?? 0,
+          }
+        : defaultGathering;
       // Update lastGatherTime to saved lastOnlineTime for offline calculation
       savedGathering.lastGatherTime = data.lastOnlineTime;
 
