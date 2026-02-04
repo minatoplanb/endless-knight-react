@@ -33,7 +33,7 @@ export const BOSSES: Boss[] = [
     areaId: 'starter_plains',
     combatStyle: 'magic',
     hpMultiplier: 20,
-    atkMultiplier: 5,
+    atkMultiplier: 8,  // Increased from 5 - requires consumables
     defMultiplier: 3,
     goldMultiplier: 10,
     minDropRarity: 'uncommon',
@@ -48,7 +48,7 @@ export const BOSSES: Boss[] = [
     areaId: 'dark_forest',
     combatStyle: 'ranged',
     hpMultiplier: 30,
-    atkMultiplier: 6,
+    atkMultiplier: 10,  // Increased from 6 - requires consumables
     defMultiplier: 4,
     goldMultiplier: 15,
     minDropRarity: 'rare',
@@ -63,7 +63,7 @@ export const BOSSES: Boss[] = [
     areaId: 'stone_highlands',
     combatStyle: 'melee',
     hpMultiplier: 40,
-    atkMultiplier: 8,
+    atkMultiplier: 14,  // Increased from 8 - requires consumables
     defMultiplier: 5,
     goldMultiplier: 20,
     minDropRarity: 'epic',
@@ -78,7 +78,7 @@ export const BOSSES: Boss[] = [
     areaId: 'misty_swamp',
     combatStyle: 'magic',
     hpMultiplier: 50,
-    atkMultiplier: 10,
+    atkMultiplier: 18,  // Increased from 10 - requires consumables
     defMultiplier: 6,
     goldMultiplier: 25,
     minDropRarity: 'epic',
@@ -93,7 +93,7 @@ export const BOSSES: Boss[] = [
     areaId: 'flame_hell',
     combatStyle: 'magic',
     hpMultiplier: 60,
-    atkMultiplier: 12,
+    atkMultiplier: 22,  // Increased from 12 - requires consumables
     defMultiplier: 8,
     goldMultiplier: 30,
     minDropRarity: 'legendary',

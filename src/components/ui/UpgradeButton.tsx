@@ -1,9 +1,10 @@
 import React, { useCallback } from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Platform } from 'react-native';
 import { COLORS, SPACING, FONT_SIZES, scale, LAYOUT } from '../../constants/theme';
 import { formatNumber } from '../../utils/format';
 import { UpgradeType } from '../../types';
 import { useTranslation } from '../../locales';
+import { audioManager } from '../../lib/audio';
 
 interface UpgradeButtonProps {
   type: UpgradeType;
@@ -30,42 +31,52 @@ export const UpgradeButton = React.memo<UpgradeButtonProps>(
 
     const handlePress = useCallback(() => {
       if (canAfford) {
+        audioManager.playSuccess();
         onPress(type);
+      } else {
+        audioManager.playError();
       }
     }, [canAfford, onPress, type]);
 
     return (
-      <Pressable
-        onPress={handlePress}
-        style={({ pressed }) => [
-          styles.container,
-          !canAfford && styles.disabled,
-          pressed && canAfford && styles.pressed,
-          isRecommended && canAfford && styles.recommended,
-        ]}
-      >
-        <View style={styles.iconContainer}>
-          <Text style={styles.icon}>{info.icon}</Text>
-        </View>
-
-        <View style={styles.infoContainer}>
-          <View style={styles.headerRow}>
-            <Text style={styles.label}>{t(info.labelKey)}</Text>
-            <Text style={styles.level}>{t('common.lv')}{level}</Text>
-            {isRecommended && (
-              <View style={styles.recommendedBadge}>
-                <Text style={styles.recommendedText}>{t('battle.recommended')}</Text>
+      <Pressable onPress={handlePress}>
+        {(state) => {
+          const hovered = Platform.OS === 'web' && (state as any).hovered;
+          return (
+            <View
+              style={[
+                styles.container,
+                !canAfford && styles.disabled,
+                canAfford && hovered && styles.hovered,
+                canAfford && state.pressed && styles.pressed,
+                isRecommended && canAfford && styles.recommended,
+              ]}
+            >
+              <View style={styles.iconContainer}>
+                <Text style={styles.icon}>{info.icon}</Text>
               </View>
-            )}
-          </View>
-          <Text style={styles.description}>{t(info.descKey)}</Text>
-        </View>
 
-        <View style={styles.costContainer}>
-          <Text style={[styles.cost, !canAfford && styles.costDisabled]}>
-            💰 {formatNumber(cost)}
-          </Text>
-        </View>
+              <View style={styles.infoContainer}>
+                <View style={styles.headerRow}>
+                  <Text style={styles.label}>{t(info.labelKey)}</Text>
+                  <Text style={styles.level}>{t('common.lv')}{level}</Text>
+                  {isRecommended && (
+                    <View style={styles.recommendedBadge}>
+                      <Text style={styles.recommendedText}>{t('battle.recommended')}</Text>
+                    </View>
+                  )}
+                </View>
+                <Text style={styles.description}>{t(info.descKey)}</Text>
+              </View>
+
+              <View style={styles.costContainer}>
+                <Text style={[styles.cost, !canAfford && styles.costDisabled]}>
+                  💰 {formatNumber(cost)}
+                </Text>
+              </View>
+            </View>
+          );
+        }}
       </Pressable>
     );
   }
@@ -80,18 +91,29 @@ const styles = StyleSheet.create({
     padding: SPACING.md,
     marginBottom: SPACING.sm,
     minHeight: LAYOUT.minTouchSize,
+    borderWidth: 2,
+    borderColor: '#5577cc',
+    borderBottomWidth: 4,
+    borderBottomColor: '#3355aa',
   },
   disabled: {
     backgroundColor: COLORS.buttonDisabled,
+    borderColor: '#444466',
+    borderBottomColor: '#222233',
     opacity: 0.7,
   },
+  hovered: {
+    backgroundColor: '#5577cc',
+    borderColor: '#6688dd',
+  },
   pressed: {
-    opacity: 0.8,
     transform: [{ scale: 0.98 }],
+    borderBottomWidth: 2,
+    marginTop: 2,
   },
   recommended: {
-    borderWidth: 2,
     borderColor: '#22c55e',
+    borderBottomColor: '#1a9e4a',
   },
   recommendedBadge: {
     backgroundColor: '#22c55e',

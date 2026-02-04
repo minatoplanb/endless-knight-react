@@ -11,6 +11,7 @@ import { BottomNav } from '../src/components/ui/BottomNav';
 import { LootModal } from '../src/components/modals/LootModal';
 import { AchievementModal } from '../src/components/modals/AchievementModal';
 import { DailyRewardModal } from '../src/components/modals/DailyRewardModal';
+import { audioManager } from '../src/lib/audio';
 
 export default function RootLayout() {
   const loadGame = useGameStore((state) => state.loadGame);
@@ -20,6 +21,7 @@ export default function RootLayout() {
     const init = async () => {
       try {
         await loadGame();
+        await audioManager.init();
         GameEngine.start();
         setIsReady(true);
       } catch (e) {

@@ -9,7 +9,7 @@
 | 設定 | 值 |
 |------|---|
 | 語言 | **繁體中文**（Claude 與使用者對話一律用繁體中文，程式碼和 commit 訊息用英文）|
-| 版本 | v1.2.0 |
+| 版本 | v1.3.2 |
 | 框架 | React Native + Expo SDK 52 |
 | 狀態管理 | Zustand |
 | 存檔 | @react-native-async-storage/async-storage |
@@ -493,6 +493,19 @@ Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 - [x] 成就按鈕 (TopBar)
 - [x] 任務通知徽章 (底部導航)
 - [x] 每日獎勵指示器 (TopBar)
+
+### ✅ 新增完成（v1.3.0）
+- [x] 製作專屬詞條系統 (6 種詞條：採集加速、金幣獵人、生命汲取、荊棘、屠龍者、節約大師)
+- [x] 採集工具系統 (8 種工具，採集速度 +25%/+50%)
+- [x] 製作等級系統 (4 類別獨立等級、經驗值、品質加成、雙倍產出、資源節省)
+- [x] Boss 難度大幅提升 (攻擊力倍率 1.6x-1.8x 調整)
+- [x] 死亡懲罰 (損失 10% 金幣、50% HP 復活)
+
+### ✅ 新增完成（v1.3.1）
+- [x] 觸覺反饋系統 (expo-haptics)
+- [x] 按鈕視覺反饋大改進 (3D 立體風格、下沉效果、hover 效果)
+- [x] Web 端 hover 支援 (PressableButton, UpgradeButton, BottomNav, Crafting)
+- [x] 修復法杖 icon (🪄 → 🔮)
 
 ### 🔲 待完成
 - [ ] 裝備頁：選中背包物品後自動捲動至說明區，或改為浮動說明面板（ItemDetail）

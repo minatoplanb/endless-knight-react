@@ -75,6 +75,7 @@ export type LocaleStrings = {
       info: string;
       revive: string;
       stage: string;
+      goldLost: string;
     };
     offline: {
       title: string;
@@ -97,6 +98,30 @@ export type LocaleStrings = {
       unlocked: string;
       reward: string;
     };
+  };
+  crafting: {
+    level: string;
+    xp: string;
+    levelUp: string;
+    unlockAt: string;
+    bonusQuality: string;
+    bonusDouble: string;
+    bonusSave: string;
+    resourceSaved: string;
+    doubleOutput: string;
+  };
+  affixes: {
+    gathering_boost: string;
+    gold_find: string;
+    life_steal: string;
+    thorns: string;
+    boss_slayer: string;
+    resource_saver: string;
+  };
+  materials: {
+    common_part: string;
+    rare_part: string;
+    boss_part: string;
   };
   battle: {
     upgrade: string;
@@ -126,6 +151,9 @@ export type LocaleStrings = {
     workers: string;
     resource: string;
     upgrade: string;
+    tools: string;
+    toolEquipped: string;
+    noTool: string;
   };
   equipment: {
     equip: string;

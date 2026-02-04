@@ -3,9 +3,48 @@ export type UpgradeType = 'hp' | 'atk' | 'def' | 'speed' | 'crit';
 // Combat Style System Types
 export type CombatStyle = 'melee' | 'ranged' | 'magic';
 
+// Affix System Types (crafting-only special effects)
+export type AffixType =
+  | 'gathering_boost'  // +% gathering speed for specific resource
+  | 'gold_find'        // +% gold from enemies
+  | 'life_steal'       // Heal % of damage dealt
+  | 'thorns'           // Reflect % of damage taken
+  | 'boss_slayer'      // +% damage to bosses
+  | 'resource_saver';  // % chance to not consume resources when crafting
+
+export interface Affix {
+  type: AffixType;
+  value: number;       // Effect value (e.g., 0.15 = 15%)
+  resourceType?: ResourceType;  // For gathering_boost only
+}
+
 // Gathering System Types
 export type ResourceType = 'ore' | 'wood' | 'fish' | 'herb';
 export type WorkerType = 'miner' | 'lumberjack' | 'fisher' | 'gatherer';
+
+// Monster Parts System (from combat)
+export type MonsterPartType = 'common_part' | 'rare_part' | 'boss_part';
+
+export interface MonsterPartsState {
+  common_part: number;  // From normal enemies
+  rare_part: number;    // From bosses (low rate) or rare enemies
+  boss_part: number;    // From bosses only (guaranteed)
+}
+
+// Crafting System Types
+export type CraftingCategory = 'forge' | 'fletching' | 'cooking' | 'alchemy';
+
+export interface CraftingCategoryProgress {
+  level: number;
+  xp: number;
+}
+
+export interface CraftingProgress {
+  forge: CraftingCategoryProgress;
+  fletching: CraftingCategoryProgress;
+  cooking: CraftingCategoryProgress;
+  alchemy: CraftingCategoryProgress;
+}
 
 // Consumables System Types
 export type ConsumableType = 'food' | 'potion';
@@ -63,6 +102,7 @@ export interface GatheringState {
   resourceCaps: Record<ResourceType, number>;
   resourceCapLevel: number; // Level of resource cap upgrade (0 = base cap)
   lastGatherTime: number; // For offline calculation
+  equippedTools: Record<ResourceType, string | null>; // Tool equipment ID per resource
 }
 
 // Equipment System Types
@@ -89,6 +129,7 @@ export interface Equipment {
   icon: string;
   level: number; // Item level affects stats
   enhancementLevel: number; // Enhancement level (0 = not enhanced)
+  affixes?: Affix[]; // Crafting-only special effects
 }
 
 export interface EquipmentSlots {
@@ -244,6 +285,12 @@ export interface GameState {
   // Gathering System
   gathering: GatheringState;
 
+  // Monster Parts (from combat)
+  monsterParts: MonsterPartsState;
+
+  // Crafting System
+  craftingProgress: CraftingProgress;
+
   // Consumables System
   consumables: ConsumableStack[];
   activeBuffs: ActiveBuff[];
@@ -353,9 +400,18 @@ export interface GameActions {
   upgradeResourceCap: () => boolean;
   collectOfflineGathering: () => void;
   dismissOfflineGathering: () => void;
+  equipTool: (toolId: string, resourceType: ResourceType) => void;
+  unequipTool: (resourceType: ResourceType) => void;
+  getGatheringToolBonus: (resourceType: ResourceType) => number;
 
   // Crafting System
   craftItem: (recipeId: string) => boolean;
+  getCraftingLevel: (category: CraftingCategory) => number;
+  getCraftingXp: (category: CraftingCategory) => number;
+  getCraftingXpRequired: (level: number) => number;
+
+  // Affix System
+  getEquippedAffixValue: (affixType: AffixType, resourceType?: ResourceType) => number;
 
   // Consumables System
   addConsumable: (consumableId: string, amount: number) => void;
@@ -457,4 +513,6 @@ export interface SaveData {
   autoConsumeEnabled?: boolean;
   autoConsumeThreshold?: number;
   autoConsumeSlot?: string | null;
+  // Crafting Progress (added in v1.3.0)
+  craftingProgress?: CraftingProgress;
 }

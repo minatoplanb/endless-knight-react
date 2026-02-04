@@ -1,16 +1,16 @@
-import React, { useRef, useCallback } from 'react';
+import React, { useRef, useCallback, useState } from 'react';
 import {
   Animated,
-  TouchableWithoutFeedback,
+  Pressable,
   StyleSheet,
   StyleProp,
   ViewStyle,
   TextStyle,
-  View,
   Text,
   Platform,
 } from 'react-native';
 import { COLORS, SPACING, FONT_SIZES, scale } from '../../constants/theme';
+import { audioManager } from '../../lib/audio';
 
 interface PressableButtonProps {
   onPress: () => void;
@@ -23,6 +23,34 @@ interface PressableButtonProps {
   size?: 'small' | 'medium' | 'large';
 }
 
+// Variant colors with hover/pressed states
+const VARIANT_STYLES = {
+  primary: {
+    bg: COLORS.buttonPrimary,
+    border: '#5577cc',
+    borderBottom: '#3355aa',
+    hoverBg: '#5577cc',
+  },
+  success: {
+    bg: COLORS.buttonSuccess,
+    border: '#55cc55',
+    borderBottom: '#338833',
+    hoverBg: '#55bb55',
+  },
+  danger: {
+    bg: COLORS.hpLow,
+    border: '#ff6666',
+    borderBottom: '#cc4444',
+    hoverBg: '#ff5555',
+  },
+  secondary: {
+    bg: COLORS.bgLight,
+    border: COLORS.textDim,
+    borderBottom: '#444466',
+    hoverBg: '#252550',
+  },
+};
+
 export const PressableButton: React.FC<PressableButtonProps> = ({
   onPress,
   title,
@@ -34,17 +62,23 @@ export const PressableButton: React.FC<PressableButtonProps> = ({
   size = 'medium',
 }) => {
   const scaleAnim = useRef(new Animated.Value(1)).current;
+  const [isPressed, setIsPressed] = useState(false);
 
   const handlePressIn = useCallback(() => {
+    setIsPressed(true);
+    if (!disabled) {
+      audioManager.playClick();
+    }
     Animated.spring(scaleAnim, {
-      toValue: 0.92,
+      toValue: 0.95,
       useNativeDriver: true,
       speed: 50,
       bounciness: 4,
     }).start();
-  }, [scaleAnim]);
+  }, [scaleAnim, disabled]);
 
   const handlePressOut = useCallback(() => {
+    setIsPressed(false);
     Animated.spring(scaleAnim, {
       toValue: 1,
       useNativeDriver: true,
@@ -59,24 +93,7 @@ export const PressableButton: React.FC<PressableButtonProps> = ({
     }
   }, [disabled, onPress]);
 
-  const variantStyles: Record<string, ViewStyle> = {
-    primary: {
-      backgroundColor: COLORS.buttonPrimary,
-      borderColor: '#5577cc',
-    },
-    success: {
-      backgroundColor: COLORS.buttonSuccess,
-      borderColor: '#55cc55',
-    },
-    danger: {
-      backgroundColor: COLORS.hpLow,
-      borderColor: '#ff6666',
-    },
-    secondary: {
-      backgroundColor: COLORS.bgLight,
-      borderColor: COLORS.textDim,
-    },
-  };
+  const variantStyle = VARIANT_STYLES[variant];
 
   const sizeStyles: Record<string, { paddingVertical: number; paddingHorizontal: number; fontSize: number }> = {
     small: {
@@ -99,38 +116,48 @@ export const PressableButton: React.FC<PressableButtonProps> = ({
   const currentSizeStyle = sizeStyles[size];
 
   return (
-    <TouchableWithoutFeedback
+    <Pressable
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       onPress={handlePress}
       disabled={disabled}
     >
-      <Animated.View
-        style={[
-          styles.button,
-          variantStyles[variant],
-          {
-            paddingVertical: currentSizeStyle.paddingVertical,
-            paddingHorizontal: currentSizeStyle.paddingHorizontal,
-            opacity: disabled ? 0.5 : 1,
-            transform: [{ scale: scaleAnim }],
-          },
-          style,
-        ]}
-      >
-        {children || (
-          <Text
+      {(state) => {
+        const hovered = Platform.OS === 'web' && (state as any).hovered;
+        return (
+          <Animated.View
             style={[
-              styles.text,
-              { fontSize: currentSizeStyle.fontSize },
-              textStyle,
+              styles.button,
+              {
+                backgroundColor: hovered && !disabled ? variantStyle.hoverBg : variantStyle.bg,
+                borderColor: variantStyle.border,
+                borderBottomColor: variantStyle.borderBottom,
+                paddingVertical: currentSizeStyle.paddingVertical,
+                paddingHorizontal: currentSizeStyle.paddingHorizontal,
+                opacity: disabled ? 0.5 : 1,
+                transform: [{ scale: scaleAnim }],
+                // Pressed effect: reduce bottom border to simulate pushing down
+                borderBottomWidth: isPressed && !disabled ? 2 : 4,
+                marginTop: isPressed && !disabled ? 2 : 0,
+              },
+              style,
             ]}
           >
-            {title}
-          </Text>
-        )}
-      </Animated.View>
-    </TouchableWithoutFeedback>
+            {children || (
+              <Text
+                style={[
+                  styles.text,
+                  { fontSize: currentSizeStyle.fontSize },
+                  textStyle,
+                ]}
+              >
+                {title}
+              </Text>
+            )}
+          </Animated.View>
+        );
+      }}
+    </Pressable>
   );
 };
 

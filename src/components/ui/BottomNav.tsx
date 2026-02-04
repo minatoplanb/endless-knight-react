@@ -1,9 +1,10 @@
 import React, { useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Platform } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
 import { COLORS, SPACING, FONT_SIZES, scale, LAYOUT } from '../../constants/theme';
 import { useGameStore } from '../../store/useGameStore';
 import { useTranslation } from '../../locales';
+import { audioManager } from '../../lib/audio';
 
 interface NavItem {
   route: string;
@@ -35,29 +36,47 @@ const NavButton = React.memo(
   }) => {
     return (
       <Pressable
-        style={({ pressed }) => [
-          styles.navButton,
-          isActive && styles.navButtonActive,
-          pressed && styles.navButtonPressed,
-        ]}
+        style={(state) => {
+          const hovered = Platform.OS === 'web' && (state as any).hovered;
+          return [
+            styles.navButton,
+            isActive && styles.navButtonActive,
+            hovered && !isActive && styles.navButtonHovered,
+            state.pressed && styles.navButtonPressed,
+          ];
+        }}
         onPress={onPress}
       >
-        <View style={styles.iconContainer}>
-          <Text style={styles.navIcon}>{item.icon}</Text>
-          {badge !== undefined && badge > 0 && (
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{badge > 9 ? '9+' : badge}</Text>
-            </View>
-          )}
-        </View>
-        <Text
-          style={[
-            styles.navLabel,
-            isActive && styles.navLabelActive,
-          ]}
-        >
-          {item.label ?? item.labelKey}
-        </Text>
+        {(state) => {
+          const hovered = Platform.OS === 'web' && (state as any).hovered;
+          return (
+            <>
+              <View style={[
+                styles.iconContainer,
+                state.pressed && styles.iconPressed,
+              ]}>
+                <Text style={[
+                  styles.navIcon,
+                  (hovered || state.pressed) && !isActive && styles.navIconHovered,
+                ]}>{item.icon}</Text>
+                {badge !== undefined && badge > 0 && (
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>{badge > 9 ? '9+' : badge}</Text>
+                  </View>
+                )}
+              </View>
+              <Text
+                style={[
+                  styles.navLabel,
+                  isActive && styles.navLabelActive,
+                  (hovered || state.pressed) && !isActive && styles.navLabelHovered,
+                ]}
+              >
+                {item.label ?? item.labelKey}
+              </Text>
+            </>
+          );
+        }}
       </Pressable>
     );
   }
@@ -78,6 +97,7 @@ export const BottomNav = React.memo(() => {
 
   const handlePress = useCallback(
     (route: string) => {
+      audioManager.playClick();
       if (route === '/') {
         router.replace('/');
       } else {
@@ -124,15 +144,24 @@ const styles = StyleSheet.create({
   navButtonActive: {
     backgroundColor: COLORS.bgLight,
   },
+  navButtonHovered: {
+    backgroundColor: 'rgba(255,255,255,0.05)',
+  },
   navButtonPressed: {
-    opacity: 0.7,
+    backgroundColor: 'rgba(255,255,255,0.1)',
   },
   iconContainer: {
     position: 'relative',
     marginBottom: SPACING.xs,
   },
+  iconPressed: {
+    transform: [{ scale: 0.9 }],
+  },
   navIcon: {
     fontSize: FONT_SIZES.xl,
+  },
+  navIconHovered: {
+    transform: [{ scale: 1.1 }],
   },
   badge: {
     position: 'absolute',
@@ -158,5 +187,8 @@ const styles = StyleSheet.create({
   navLabelActive: {
     color: COLORS.text,
     fontWeight: 'bold',
+  },
+  navLabelHovered: {
+    color: COLORS.text,
   },
 });

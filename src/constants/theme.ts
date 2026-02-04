@@ -91,7 +91,7 @@ export const EQUIPMENT_EMOJI: Record<string, string> = {
   sword_iron: '🗡️',
   axe: '🪓',
   bow: '🏹',
-  staff: '🪄',
+  staff: '🔮',
   helmet: '🪖',
   armor: '🥋',
   shield: '🛡️',

@@ -75,6 +75,7 @@ export const zh: LocaleStrings = {
       info: '將返回關卡 {0}',
       revive: '復活',
       stage: '關',
+      goldLost: '損失金幣',
     },
     offline: {
       title: '離線獎勵',
@@ -126,6 +127,9 @@ export const zh: LocaleStrings = {
     workers: '工人',
     resource: '資源',
     upgrade: '升級',
+    tools: '工具',
+    toolEquipped: '已裝備',
+    noTool: '未裝備工具',
   },
   equipment: {
     equip: '裝備',
@@ -150,5 +154,29 @@ export const zh: LocaleStrings = {
   },
   achievements: {
     title: '成就',
+  },
+  crafting: {
+    level: '製作等級',
+    xp: '經驗',
+    levelUp: '升級！',
+    unlockAt: '等級 {0} 解鎖',
+    bonusQuality: '品質加成',
+    bonusDouble: '雙倍產出',
+    bonusSave: '資源節省',
+    resourceSaved: '資源已節省！',
+    doubleOutput: '雙倍產出！',
+  },
+  affixes: {
+    gathering_boost: '採集加速',
+    gold_find: '金幣獵人',
+    life_steal: '生命汲取',
+    thorns: '荊棘',
+    boss_slayer: '屠龍者',
+    resource_saver: '節約大師',
+  },
+  materials: {
+    common_part: '普通素材',
+    rare_part: '稀有素材',
+    boss_part: 'Boss 素材',
   },
 };

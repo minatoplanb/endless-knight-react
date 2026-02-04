@@ -75,6 +75,7 @@ export const en: LocaleStrings = {
       info: 'Return to stage {0}',
       revive: 'Revive',
       stage: '',
+      goldLost: 'Gold lost',
     },
     offline: {
       title: 'Offline rewards',
@@ -126,6 +127,9 @@ export const en: LocaleStrings = {
     workers: 'Workers',
     resource: 'Resources',
     upgrade: 'Upgrade',
+    tools: 'Tools',
+    toolEquipped: 'Equipped',
+    noTool: 'No tool',
   },
   equipment: {
     equip: 'Equip',
@@ -151,6 +155,30 @@ export const en: LocaleStrings = {
   achievements: {
     title: 'Achievements',
   },
+  crafting: {
+    level: 'Crafting Level',
+    xp: 'XP',
+    levelUp: 'Level Up!',
+    unlockAt: 'Unlocks at Lv.{0}',
+    bonusQuality: 'Quality Bonus',
+    bonusDouble: 'Double Output',
+    bonusSave: 'Resource Save',
+    resourceSaved: 'Resources saved!',
+    doubleOutput: 'Double output!',
+  },
+  affixes: {
+    gathering_boost: 'Gathering Boost',
+    gold_find: 'Gold Find',
+    life_steal: 'Life Steal',
+    thorns: 'Thorns',
+    boss_slayer: 'Boss Slayer',
+    resource_saver: 'Resource Saver',
+  },
+  materials: {
+    common_part: 'Common Part',
+    rare_part: 'Rare Part',
+    boss_part: 'Boss Part',
+  },
 };
 
 // English names for game data (areas, enemies, etc.). Used when locale is 'en'.
@@ -169,6 +197,8 @@ export const dataNames: {
   consumable: Record<string, string>;
   craftingCategory: Record<string, string>;
   equipment: Record<string, string>;
+  tool: Record<string, string>;
+  recipe: Record<string, string>;
 } = {
   area: {
     starter_plains: 'Starter Plains',
@@ -375,5 +405,34 @@ export const dataNames: {
     crafted_staff_2: 'Magic Staff',
     crafted_ring_1: 'Wood Ring',
     crafted_amulet_1: 'Herb Amulet',
+    // Affix equipment
+    crafted_gold_ring: 'Fortune Ring',
+    crafted_vampire_amulet: 'Vampire Amulet',
+    crafted_thorns_shield: 'Thorns Shield',
+    crafted_boss_sword: 'Dragon Slayer',
+  },
+  tool: {
+    tool_pickaxe_1: 'Iron Pickaxe',
+    tool_pickaxe_2: 'Steel Pickaxe',
+    tool_axe_1: 'Woodcutting Axe',
+    tool_axe_2: 'Fine Woodcutting Axe',
+    tool_rod_1: 'Fishing Rod',
+    tool_rod_2: 'Fine Fishing Rod',
+    tool_sickle_1: 'Sickle',
+    tool_sickle_2: 'Fine Sickle',
+  },
+  recipe: {
+    iron_pickaxe: 'Iron Pickaxe',
+    steel_pickaxe: 'Steel Pickaxe',
+    woodcutting_axe: 'Woodcutting Axe',
+    fine_woodcutting_axe: 'Fine Woodcutting Axe',
+    fishing_rod: 'Fishing Rod',
+    fine_fishing_rod: 'Fine Fishing Rod',
+    sickle: 'Sickle',
+    fine_sickle: 'Fine Sickle',
+    gold_ring: 'Fortune Ring',
+    vampire_amulet: 'Vampire Amulet',
+    thorns_shield: 'Thorns Shield',
+    boss_slayer_sword: 'Dragon Slayer',
   },
 };

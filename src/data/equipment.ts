@@ -1,4 +1,4 @@
-import { EquipmentSlotType, Rarity, EquipmentStats } from '../types';
+import { EquipmentSlotType, Rarity, EquipmentStats, ResourceType, Affix, AffixType } from '../types';
 
 // Base equipment definitions
 export interface BaseEquipment {
@@ -231,8 +231,13 @@ export const ALL_EQUIPMENT: BaseEquipment[] = [
   ...AMULETS,
 ];
 
+// Extended base equipment with optional affixes (for crafting)
+export interface CraftedBaseEquipment extends BaseEquipment {
+  affixes?: Affix[];
+}
+
 // Crafted equipment definitions (for crafting system)
-export const CRAFTED_EQUIPMENT: Record<string, BaseEquipment> = {
+export const CRAFTED_EQUIPMENT: Record<string, CraftedBaseEquipment> = {
   // Forge
   crafted_sword_1: { id: 'crafted_sword_1', name: '鍛造鐵劍', slot: 'weapon', icon: 'sword_basic', baseStats: { atk: 6 } },
   crafted_sword_2: { id: 'crafted_sword_2', name: '鍛造鋼劍', slot: 'weapon', icon: 'sword_iron', baseStats: { atk: 10, critChance: 0.02 } },
@@ -251,10 +256,139 @@ export const CRAFTED_EQUIPMENT: Record<string, BaseEquipment> = {
   crafted_ring_1: { id: 'crafted_ring_1', name: '製作木戒', slot: 'ring', icon: 'ring', baseStats: { maxHp: 15 } },
   // Alchemy
   crafted_amulet_1: { id: 'crafted_amulet_1', name: '草藥護符', slot: 'amulet', icon: 'amulet', baseStats: { maxHp: 30, def: 2 } },
+
+  // ========== AFFIX EQUIPMENT (crafting-only special effects) ==========
+  // Gold Find Ring
+  crafted_gold_ring: {
+    id: 'crafted_gold_ring',
+    name: '財富戒指',
+    slot: 'ring',
+    icon: 'ring',
+    baseStats: { atk: 2 },
+    affixes: [{ type: 'gold_find', value: 0.20 }],
+  },
+  // Life Steal Amulet
+  crafted_vampire_amulet: {
+    id: 'crafted_vampire_amulet',
+    name: '吸血護符',
+    slot: 'amulet',
+    icon: 'amulet',
+    baseStats: { atk: 3, maxHp: 15 },
+    affixes: [{ type: 'life_steal', value: 0.03 }],
+  },
+  // Thorns Shield
+  crafted_thorns_shield: {
+    id: 'crafted_thorns_shield',
+    name: '荊棘盾',
+    slot: 'shield',
+    icon: 'shield',
+    baseStats: { def: 8, maxHp: 20 },
+    affixes: [{ type: 'thorns', value: 0.15 }],
+  },
+  // Boss Slayer Sword
+  crafted_boss_sword: {
+    id: 'crafted_boss_sword',
+    name: '屠龍劍',
+    slot: 'weapon',
+    icon: 'sword_iron',
+    baseStats: { atk: 12, critChance: 0.03 },
+    affixes: [{ type: 'boss_slayer', value: 0.25 }],
+  },
+};
+
+// ========== TOOL DEFINITIONS ==========
+export interface ToolDefinition {
+  id: string;
+  name: string;
+  nameEn: string;
+  resourceType: ResourceType;
+  gatheringBoost: number; // e.g., 0.25 = +25%
+  icon: string;
+}
+
+export const TOOLS: Record<string, ToolDefinition> = {
+  // Pickaxes (Ore)
+  tool_pickaxe_1: {
+    id: 'tool_pickaxe_1',
+    name: '鐵鎬',
+    nameEn: 'Iron Pickaxe',
+    resourceType: 'ore',
+    gatheringBoost: 0.25,
+    icon: '⛏️',
+  },
+  tool_pickaxe_2: {
+    id: 'tool_pickaxe_2',
+    name: '鋼鎬',
+    nameEn: 'Steel Pickaxe',
+    resourceType: 'ore',
+    gatheringBoost: 0.50,
+    icon: '⛏️',
+  },
+  // Axes (Wood)
+  tool_axe_1: {
+    id: 'tool_axe_1',
+    name: '伐木斧',
+    nameEn: 'Woodcutting Axe',
+    resourceType: 'wood',
+    gatheringBoost: 0.25,
+    icon: '🪓',
+  },
+  tool_axe_2: {
+    id: 'tool_axe_2',
+    name: '精鋼斧',
+    nameEn: 'Fine Woodcutting Axe',
+    resourceType: 'wood',
+    gatheringBoost: 0.50,
+    icon: '🪓',
+  },
+  // Fishing Rods (Fish)
+  tool_rod_1: {
+    id: 'tool_rod_1',
+    name: '釣竿',
+    nameEn: 'Fishing Rod',
+    resourceType: 'fish',
+    gatheringBoost: 0.25,
+    icon: '🎣',
+  },
+  tool_rod_2: {
+    id: 'tool_rod_2',
+    name: '精良釣竿',
+    nameEn: 'Fine Fishing Rod',
+    resourceType: 'fish',
+    gatheringBoost: 0.50,
+    icon: '🎣',
+  },
+  // Sickles (Herb)
+  tool_sickle_1: {
+    id: 'tool_sickle_1',
+    name: '鐮刀',
+    nameEn: 'Sickle',
+    resourceType: 'herb',
+    gatheringBoost: 0.25,
+    icon: '🌿',
+  },
+  tool_sickle_2: {
+    id: 'tool_sickle_2',
+    name: '精良鐮刀',
+    nameEn: 'Fine Sickle',
+    resourceType: 'herb',
+    gatheringBoost: 0.50,
+    icon: '🌿',
+  },
+};
+
+// Get tool definition by ID
+export const getToolById = (id: string): ToolDefinition | undefined => {
+  return TOOLS[id];
+};
+
+// Get tools for a specific resource type
+export const getToolsForResource = (resourceType: ResourceType): ToolDefinition[] => {
+  return Object.values(TOOLS).filter(t => t.resourceType === resourceType);
 };
 
 // Get crafted equipment by ID
-export const getCraftedEquipment = (id: string): BaseEquipment | undefined => {
+export const getCraftedEquipment = (id: string): CraftedBaseEquipment | undefined => {
   return CRAFTED_EQUIPMENT[id];
 };
 

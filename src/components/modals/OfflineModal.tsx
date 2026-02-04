@@ -6,6 +6,7 @@ import { formatNumber, formatTime } from '../../utils/format';
 import { RESOURCES, ALL_RESOURCES } from '../../data/resources';
 import { PressableButton } from '../common/PressableButton';
 import { useTranslation } from '../../locales';
+import { audioManager } from '../../lib/audio';
 
 export const OfflineModal = React.memo(() => {
   const { locale } = useTranslation();
@@ -22,6 +23,7 @@ export const OfflineModal = React.memo(() => {
   const offlineSeconds = (Date.now() - lastOnlineTime) / 1000;
 
   const handleCollect = useCallback(() => {
+    audioManager.playCoin();
     useGameStore.setState({ gold: gold + offlineReward });
     collectOfflineGathering();
     setShowOfflineModal(false);

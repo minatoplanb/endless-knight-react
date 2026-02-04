@@ -29,6 +29,11 @@ import {
   QuestStateData,
   ActiveQuestData,
   Rarity,
+  CraftingCategory,
+  CraftingProgress,
+  AffixType,
+  MonsterPartsState,
+  MonsterPartType,
 } from '../types';
 import {
   getCombatMultiplier,
@@ -37,7 +42,12 @@ import {
 import {
   getRecipeById,
   canAffordRecipe,
+  getRecipeXp,
+  getCraftingXpRequired,
+  isRecipeUnlocked,
+  CRAFTING_LEVEL_EFFECTS,
 } from '../data/crafting';
+import { getToolById, TOOLS } from '../data/equipment';
 import {
   getConsumableById,
   CONSUMABLES,
@@ -314,14 +324,37 @@ const createDefaultGatheringState = (): GatheringState => {
     resourceCaps[resourceType] = RESOURCE_BASE_CAP;
   }
 
+  const equippedTools: Record<ResourceType, string | null> = {
+    ore: null,
+    wood: null,
+    fish: null,
+    herb: null,
+  };
+
   return {
     workers,
     resources,
     resourceCaps,
     resourceCapLevel: 0,
     lastGatherTime: Date.now(),
+    equippedTools,
   };
 };
+
+// Create default crafting progress
+const createDefaultCraftingProgress = (): CraftingProgress => ({
+  forge: { level: 1, xp: 0 },
+  fletching: { level: 1, xp: 0 },
+  cooking: { level: 1, xp: 0 },
+  alchemy: { level: 1, xp: 0 },
+});
+
+// Create default monster parts state
+const createDefaultMonsterParts = (): MonsterPartsState => ({
+  common_part: 0,
+  rare_part: 0,
+  boss_part: 0,
+});
 
 const initialState: GameState = {
   player: {
@@ -358,6 +391,10 @@ const initialState: GameState = {
   },
   // Gathering system
   gathering: createDefaultGatheringState(),
+  // Monster parts (from combat)
+  monsterParts: createDefaultMonsterParts(),
+  // Crafting system
+  craftingProgress: createDefaultCraftingProgress(),
   // Consumables system
   consumables: [],
   activeBuffs: [],
@@ -524,6 +561,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
       damage = Math.floor(damage * state.player.critMultiplier);
     }
 
+    // Apply boss_slayer affix if enemy is a boss
+    if (state.currentEnemy.isBoss) {
+      const bossSlayerBonus = get().getEquippedAffixValue('boss_slayer');
+      if (bossSlayerBonus > 0) {
+        damage = Math.floor(damage * (1 + bossSlayerBonus));
+      }
+    }
+
     const newEnemyHp = state.currentEnemy.currentHp - damage;
 
     get().addDamagePopup({
@@ -531,6 +576,21 @@ export const useGameStore = create<GameStore>((set, get) => ({
       isCrit,
       isPlayerDamage: false,
     });
+
+    // Apply life_steal affix
+    const lifeStealPercent = get().getEquippedAffixValue('life_steal');
+    if (lifeStealPercent > 0 && state.player.currentHp < state.player.maxHp) {
+      const healAmount = Math.floor(damage * lifeStealPercent);
+      if (healAmount > 0) {
+        const newHp = Math.min(state.player.maxHp, state.player.currentHp + healAmount);
+        set({
+          player: {
+            ...state.player,
+            currentHp: newHp,
+          },
+        });
+      }
+    }
 
     // Track statistics
     set({
@@ -588,6 +648,26 @@ export const useGameStore = create<GameStore>((set, get) => ({
       },
     });
 
+    // Apply thorns affix - reflect damage back to enemy
+    const thornsPercent = get().getEquippedAffixValue('thorns');
+    if (thornsPercent > 0 && state.currentEnemy) {
+      const reflectDamage = Math.floor(damage * thornsPercent);
+      if (reflectDamage > 0) {
+        const newEnemyHp = state.currentEnemy.currentHp - reflectDamage;
+        if (newEnemyHp <= 0) {
+          get().killEnemy();
+          return; // Enemy died from thorns, skip player HP update
+        } else {
+          set({
+            currentEnemy: {
+              ...state.currentEnemy,
+              currentHp: newEnemyHp,
+            },
+          });
+        }
+      }
+    }
+
     if (newPlayerHp <= 0) {
       get().playerDie();
     } else {
@@ -622,9 +702,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (!state.currentEnemy) return;
 
     const currentArea = getAreaById(state.stage.currentAreaId);
+    const currentAreaId = state.stage.currentAreaId;
+
     // Apply gold buff from skills
     const skillGoldBuff = get().getSkillBuffMultiplier('gold');
-    const goldEarned = Math.floor(state.currentEnemy.goldDrop * skillGoldBuff);
+    // Apply gold_find affix
+    const goldFindBonus = get().getEquippedAffixValue('gold_find');
+    const goldEarned = Math.floor(state.currentEnemy.goldDrop * skillGoldBuff * (1 + goldFindBonus));
     const isActualBoss = state.currentEnemy.isBoss;
     const newEnemiesKilled = state.stage.enemiesKilled + 1;
 
@@ -634,52 +718,64 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     // Boss kill or stage complete triggers stage advancement
     if (isActualBoss || isStageComplete) {
-      // Check if this was the last stage of the area
       if (currentArea && newStage >= currentArea.stages) {
         areaCleared = true;
-        // Stay at the last stage when area is cleared
       } else {
         newStage++;
       }
     }
 
-    // Check for loot drop - bosses always drop loot
-    let loot: Equipment | null = null;
-    if (isActualBoss) {
-      // Boss guaranteed drop with higher rarity
-      loot = LootSystem.generateDrop(state.stage.currentStage, true);
-    } else if (LootSystem.shouldDropLoot(state.stage.currentStage, false)) {
-      // Regular enemies use normal drop chance (not boss drop chance)
-      loot = LootSystem.generateDrop(state.stage.currentStage, false);
+    // ========== NEW: MATERIAL DROPS (Melvor Idle style) ==========
+    // ALL enemies drop materials (resources + monster parts)
+    const materialDrop = LootSystem.generateMaterialDrop(
+      currentAreaId,
+      state.stage.currentStage,
+      isActualBoss
+    );
+
+    // Add dropped resources to gathering resources (respect caps)
+    const newResources = { ...state.gathering.resources };
+    for (const [resource, amount] of Object.entries(materialDrop.resources)) {
+      if (amount && amount > 0) {
+        const resType = resource as ResourceType;
+        const cap = state.gathering.resourceCaps[resType];
+        newResources[resType] = Math.min(cap, newResources[resType] + amount);
+      }
     }
 
-    // Auto-collect loot
+    // Add dropped monster parts
+    const newMonsterParts = { ...state.monsterParts };
+    for (const [partType, amount] of Object.entries(materialDrop.monsterParts)) {
+      if (amount && amount > 0) {
+        newMonsterParts[partType as MonsterPartType] += amount;
+      }
+    }
+
+    // ========== EQUIPMENT DROPS (BOSS ONLY, RARE) ==========
+    let loot: Equipment | null = null;
     let newInventory = [...state.inventory];
     let newEquipment = { ...state.equipment };
     let showLoot = false;
 
-    if (loot) {
-      const currentEquipped = state.equipment[loot.slot];
+    // Only BOSSES can drop equipment, and it's rare (15% chance)
+    if (isActualBoss && LootSystem.shouldBossDropEquipment()) {
+      loot = LootSystem.generateEquipmentDrop(state.stage.currentStage);
 
-      // Auto-equip if it's an upgrade or slot is empty
+      const currentEquipped = state.equipment[loot.slot];
       const backpackCapacity = get().getBackpackCapacity();
+
       if (LootSystem.isUpgrade(currentEquipped, loot)) {
-        // Move current to inventory if exists
         if (currentEquipped) {
           newInventory.push(currentEquipped);
         }
         newEquipment[loot.slot] = loot;
       } else if (newInventory.length < backpackCapacity) {
-        // Add to inventory if space available
         newInventory.push(loot);
       }
-      // If inventory full and not upgrade, item is lost (no notification)
-
       showLoot = true;
     }
 
     // Update area progress
-    const currentAreaId = state.stage.currentAreaId;
     const currentAreaProgress = state.areaProgress[currentAreaId] || createDefaultAreaProgress();
     const newAreaProgress = {
       ...state.areaProgress,
@@ -696,7 +792,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
       const nextArea = getNextArea(currentAreaId);
       if (nextArea && !newUnlockedAreas.includes(nextArea.id)) {
         newUnlockedAreas.push(nextArea.id);
-        // Initialize progress for newly unlocked area
         newAreaProgress[nextArea.id] = createDefaultAreaProgress();
       }
     }
@@ -723,6 +818,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
         travelProgress: 0,
         isTraveling: true,
       },
+      gathering: {
+        ...state.gathering,
+        resources: newResources,
+      },
+      monsterParts: newMonsterParts,
       areaProgress: newAreaProgress,
       unlockedAreas: newUnlockedAreas,
       equipment: newEquipment,
@@ -752,12 +852,16 @@ export const useGameStore = create<GameStore>((set, get) => ({
   playerDie: () => {
     const state = get();
 
+    // Death penalty: lose 10% of gold
+    const goldLoss = Math.floor(state.gold * 0.1);
+
     // Set player as dead briefly and track statistics
     set({
       player: {
         ...state.player,
         currentHp: 0,
       },
+      gold: state.gold - goldLoss,
       statistics: {
         ...state.statistics,
         totalDeaths: state.statistics.totalDeaths + 1,
@@ -771,10 +875,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
       const currentState = get();
       const newStage = Math.max(1, currentState.stage.currentStage - 1);
 
+      // Revive at 50% HP instead of full HP
+      const reviveHp = Math.floor(currentState.player.maxHp * 0.5);
+
       set({
         player: {
           ...currentState.player,
-          currentHp: currentState.player.maxHp,
+          currentHp: reviveHp,
         },
         stage: {
           ...currentState.stage,
@@ -1762,16 +1869,28 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     for (const workerType of ALL_WORKERS) {
       const worker = newWorkers[workerType];
-      const interval = getWorkerInterval(worker.level);
+      const baseInterval = getWorkerInterval(worker.level);
+
+      // Get resource type for this worker
+      const resourceType: ResourceType = workerType === 'miner' ? 'ore' :
+                          workerType === 'lumberjack' ? 'wood' :
+                          workerType === 'fisher' ? 'fish' : 'herb';
+
+      // Apply tool bonus
+      const toolBonus = get().getGatheringToolBonus(resourceType);
+      // Apply gathering_boost affix
+      const affixBonus = get().getEquippedAffixValue('gathering_boost', resourceType);
+      const totalBonus = 1 + toolBonus + affixBonus;
+
+      // Effective interval = base interval / (1 + bonus)
+      const effectiveInterval = baseInterval / totalBonus;
+
       // Progress per tick: TICK_INTERVAL ms / (interval seconds * 1000 ms)
-      const progressPerTick = TICK_INTERVAL / (interval * 1000);
+      const progressPerTick = TICK_INTERVAL / (effectiveInterval * 1000);
       const newProgress = worker.progress + progressPerTick;
 
       if (newProgress >= 1) {
         // Gathered a resource
-        const resourceType: ResourceType = workerType === 'miner' ? 'ore' :
-                            workerType === 'lumberjack' ? 'wood' :
-                            workerType === 'fisher' ? 'fish' : 'herb';
         const cap = gathering.resourceCaps[resourceType];
         const resourcesGained = Math.floor(newProgress);
         const oldAmount = newResources[resourceType];
@@ -1934,24 +2053,51 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const recipe = getRecipeById(recipeId);
     if (!recipe) return false;
 
-    // Check if can afford
-    if (!canAffordRecipe(recipe, state.gathering.resources, state.gold)) {
+    // Check crafting level requirement
+    const craftingLevel = get().getCraftingLevel(recipe.category);
+    if (!isRecipeUnlocked(recipe, craftingLevel)) {
+      return false; // Level too low
+    }
+
+    // Check if can afford (including monster parts)
+    if (!canAffordRecipe(recipe, state.gathering.resources, state.gold, state.monsterParts)) {
       return false;
     }
 
-    // Deduct resources
+    // Check resource_saver affix and crafting level 20 bonus
+    const resourceSaverAffix = get().getEquippedAffixValue('resource_saver');
+    const levelResourceSave = craftingLevel >= CRAFTING_LEVEL_EFFECTS.resourceSaveLevel
+      ? CRAFTING_LEVEL_EFFECTS.resourceSaveChance : 0;
+    const saveChance = resourceSaverAffix + levelResourceSave;
+    const saveResources = Math.random() < saveChance;
+
+    // Deduct resources (unless saved)
     const newResources = { ...state.gathering.resources };
-    for (const [resource, amount] of Object.entries(recipe.costs)) {
-      newResources[resource as ResourceType] -= amount!;
+    const newMonsterParts = { ...state.monsterParts };
+    if (!saveResources) {
+      for (const [resource, amount] of Object.entries(recipe.costs)) {
+        newResources[resource as ResourceType] -= amount!;
+      }
+      // Deduct monster parts
+      if (recipe.partCosts) {
+        for (const [part, amount] of Object.entries(recipe.partCosts)) {
+          newMonsterParts[part as MonsterPartType] -= amount!;
+        }
+      }
     }
 
-    // Deduct gold
+    // Deduct gold (always)
     const newGold = state.gold - (recipe.goldCost || 0);
+
+    // Check for double output (crafting level 15+)
+    const doubleOutput = craftingLevel >= CRAFTING_LEVEL_EFFECTS.doubleOutputLevel &&
+      Math.random() < CRAFTING_LEVEL_EFFECTS.doubleOutputChance;
+    const outputMultiplier = doubleOutput ? 2 : 1;
 
     // Add crafted item
     if (recipe.itemType === 'consumable') {
       // Add to consumables
-      get().addConsumable(recipe.outputId, recipe.outputAmount);
+      get().addConsumable(recipe.outputId, recipe.outputAmount * outputMultiplier);
     } else if (recipe.itemType === 'equipment') {
       // Get crafted equipment base stats
       const baseEquip = getCraftedEquipment(recipe.outputId);
@@ -1961,6 +2107,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
           return false; // Inventory full
         }
 
+        // Apply quality bonus from crafting level (+5% per level)
+        const qualityBonus = 1 + craftingLevel * CRAFTING_LEVEL_EFFECTS.qualityBonusPerLevel;
+        const enhancedStats = { ...baseEquip.baseStats };
+        if (enhancedStats.atk) enhancedStats.atk = Math.floor(enhancedStats.atk * qualityBonus);
+        if (enhancedStats.def) enhancedStats.def = Math.floor(enhancedStats.def * qualityBonus);
+        if (enhancedStats.maxHp) enhancedStats.maxHp = Math.floor(enhancedStats.maxHp * qualityBonus);
+
         // Create equipment item with uncommon rarity (crafted items are better than drops)
         const craftedItem: Equipment = {
           id: `crafted_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
@@ -1968,15 +2121,42 @@ export const useGameStore = create<GameStore>((set, get) => ({
           name: baseEquip.name,
           slot: baseEquip.slot,
           rarity: 'uncommon', // Crafted items are uncommon quality
-          stats: { ...baseEquip.baseStats },
+          stats: enhancedStats,
           icon: baseEquip.icon,
           level: Math.max(1, Math.floor(state.stage.currentStage / 10)),
           enhancementLevel: 0,
+          affixes: baseEquip.affixes, // Copy affixes from crafted equipment definition
         };
 
         // Add to inventory
         set({ inventory: [...state.inventory, craftedItem] });
       }
+    } else if (recipe.itemType === 'tool') {
+      // Tools are stored separately - equip to the appropriate resource slot
+      const tool = getToolById(recipe.outputId);
+      if (tool) {
+        // Auto-equip the tool
+        const newEquippedTools = { ...state.gathering.equippedTools };
+        newEquippedTools[tool.resourceType] = tool.id;
+        set({
+          gathering: {
+            ...state.gathering,
+            equippedTools: newEquippedTools,
+          },
+        });
+      }
+    }
+
+    // Calculate and add crafting XP
+    const xpGained = getRecipeXp(recipe);
+    const currentProgress = state.craftingProgress[recipe.category];
+    let newXp = currentProgress.xp + xpGained;
+    let newLevel = currentProgress.level;
+
+    // Level up if enough XP
+    while (newXp >= getCraftingXpRequired(newLevel)) {
+      newXp -= getCraftingXpRequired(newLevel);
+      newLevel++;
     }
 
     set({
@@ -1984,6 +2164,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
       gathering: {
         ...state.gathering,
         resources: newResources,
+      },
+      monsterParts: newMonsterParts,
+      craftingProgress: {
+        ...state.craftingProgress,
+        [recipe.category]: { level: newLevel, xp: newXp },
       },
       statistics: {
         ...state.statistics,
@@ -2165,6 +2350,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         [startingArea.id]: createDefaultAreaProgress(),
       },
       gathering: createDefaultGatheringState(),
+      monsterParts: createDefaultMonsterParts(),
       consumables: [],
       activeBuffs: [],
       // Update prestige
@@ -2392,6 +2578,86 @@ export const useGameStore = create<GameStore>((set, get) => ({
     });
   },
 
+  // Tool System
+  equipTool: (toolId: string, resourceType: ResourceType) => {
+    const state = get();
+    const tool = getToolById(toolId);
+    if (!tool || tool.resourceType !== resourceType) return;
+
+    set({
+      gathering: {
+        ...state.gathering,
+        equippedTools: {
+          ...state.gathering.equippedTools,
+          [resourceType]: toolId,
+        },
+      },
+    });
+  },
+
+  unequipTool: (resourceType: ResourceType) => {
+    const state = get();
+    set({
+      gathering: {
+        ...state.gathering,
+        equippedTools: {
+          ...state.gathering.equippedTools,
+          [resourceType]: null,
+        },
+      },
+    });
+  },
+
+  getGatheringToolBonus: (resourceType: ResourceType) => {
+    const state = get();
+    const toolId = state.gathering.equippedTools[resourceType];
+    if (!toolId) return 0;
+
+    const tool = getToolById(toolId);
+    return tool ? tool.gatheringBoost : 0;
+  },
+
+  // Crafting Level System
+  getCraftingLevel: (category: CraftingCategory) => {
+    const state = get();
+    return state.craftingProgress[category].level;
+  },
+
+  getCraftingXp: (category: CraftingCategory) => {
+    const state = get();
+    return state.craftingProgress[category].xp;
+  },
+
+  getCraftingXpRequired: (level: number) => {
+    return getCraftingXpRequired(level);
+  },
+
+  // Affix System
+  getEquippedAffixValue: (affixType: AffixType, resourceType?: ResourceType) => {
+    const state = get();
+    let totalValue = 0;
+
+    // Check all equipped items for the affix
+    const slots = Object.values(state.equipment) as (Equipment | null)[];
+    for (const item of slots) {
+      if (!item?.affixes) continue;
+      for (const affix of item.affixes) {
+        if (affix.type === affixType) {
+          // For gathering_boost, check resource type match
+          if (affixType === 'gathering_boost' && resourceType) {
+            if (affix.resourceType === resourceType) {
+              totalValue += affix.value;
+            }
+          } else {
+            totalValue += affix.value;
+          }
+        }
+      }
+    }
+
+    return totalValue;
+  },
+
   // Save/Load
   saveGame: async () => {
     const state = get();
@@ -2423,6 +2689,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       autoConsumeEnabled: state.autoConsumeEnabled,
       autoConsumeThreshold: state.autoConsumeThreshold,
       autoConsumeSlot: state.autoConsumeSlot,
+      craftingProgress: state.craftingProgress,
     };
 
     try {
@@ -2468,10 +2735,18 @@ export const useGameStore = create<GameStore>((set, get) => ({
             ...data.gathering,
             // Ensure resourceCapLevel exists (added in v1.2.0)
             resourceCapLevel: data.gathering.resourceCapLevel ?? 0,
+            // Ensure equippedTools exists (added in v1.3.0)
+            equippedTools: data.gathering.equippedTools ?? defaultGathering.equippedTools,
           }
         : defaultGathering;
       // Update lastGatherTime to saved lastOnlineTime for offline calculation
       savedGathering.lastGatherTime = data.lastOnlineTime;
+
+      // Handle migration for crafting progress (added in v1.3.0)
+      const savedCraftingProgress = data.craftingProgress || createDefaultCraftingProgress();
+
+      // Handle migration for monster parts (added in v1.4.0)
+      const savedMonsterParts = (data as any).monsterParts || createDefaultMonsterParts();
 
       set({
         player: data.player,
@@ -2507,6 +2782,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
         autoConsumeEnabled: data.autoConsumeEnabled || false,
         autoConsumeThreshold: data.autoConsumeThreshold || 0.3,
         autoConsumeSlot: data.autoConsumeSlot || null,
+        craftingProgress: savedCraftingProgress,
+        monsterParts: savedMonsterParts,
       });
 
       // Recalculate stats with prestige bonuses

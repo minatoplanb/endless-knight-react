@@ -1,13 +1,11 @@
 // Crafting System - Convert gathered resources into useful items
+// Melvor Idle inspired: Equipment primarily from crafting, enemies drop materials
 
-import { ResourceType } from '../types';
+import { ResourceType, CraftingCategory, MonsterPartType } from '../types';
 import { EquipmentSlotType, Rarity } from '../types';
 
-// Crafting category
-export type CraftingCategory = 'forge' | 'fletching' | 'cooking' | 'alchemy';
-
 // Crafted item type
-export type CraftedItemType = 'equipment' | 'consumable';
+export type CraftedItemType = 'equipment' | 'consumable' | 'tool';
 
 // Base recipe interface
 export interface Recipe {
@@ -19,6 +17,8 @@ export interface Recipe {
   icon: string;
   // Resource costs
   costs: Partial<Record<ResourceType, number>>;
+  // Monster part costs (new!)
+  partCosts?: Partial<Record<MonsterPartType, number>>;
   // Gold cost (optional)
   goldCost?: number;
   // Output - either equipment template or consumable id
@@ -93,9 +93,11 @@ export const RECIPES: Recipe[] = [
     itemType: 'equipment',
     icon: '⚔️',
     costs: { ore: 50 },
+    partCosts: { common_part: 5 },
     goldCost: 300,
     outputId: 'crafted_sword_2',
     outputAmount: 1,
+    levelRequired: 3,
   },
   {
     id: 'iron_armor',
@@ -117,9 +119,11 @@ export const RECIPES: Recipe[] = [
     itemType: 'equipment',
     icon: '🛡️',
     costs: { ore: 80 },
+    partCosts: { common_part: 8 },
     goldCost: 500,
     outputId: 'crafted_armor_2',
     outputAmount: 1,
+    levelRequired: 3,
   },
   {
     id: 'iron_helmet',
@@ -153,9 +157,11 @@ export const RECIPES: Recipe[] = [
     itemType: 'equipment',
     icon: '🪓',
     costs: { ore: 60, wood: 10 },
+    partCosts: { common_part: 6, rare_part: 1 },
     goldCost: 400,
     outputId: 'crafted_axe_1',
     outputAmount: 1,
+    levelRequired: 5,
   },
 
   // ========== FLETCHING (wood -> ranged weapons/light armor) ==========
@@ -179,9 +185,11 @@ export const RECIPES: Recipe[] = [
     itemType: 'equipment',
     icon: '🏹',
     costs: { wood: 50 },
+    partCosts: { common_part: 5 },
     goldCost: 300,
     outputId: 'crafted_bow_2',
     outputAmount: 1,
+    levelRequired: 3,
   },
   {
     id: 'leather_armor',
@@ -203,9 +211,11 @@ export const RECIPES: Recipe[] = [
     itemType: 'equipment',
     icon: '🥋',
     costs: { wood: 60, herb: 15 },
+    partCosts: { common_part: 8 },
     goldCost: 400,
     outputId: 'crafted_leather_2',
     outputAmount: 1,
+    levelRequired: 3,
   },
   {
     id: 'wooden_staff',
@@ -213,7 +223,7 @@ export const RECIPES: Recipe[] = [
     description: '基礎的法杖',
     category: 'fletching',
     itemType: 'equipment',
-    icon: '🪄',
+    icon: '🔮',
     costs: { wood: 30, herb: 10 },
     goldCost: 150,
     outputId: 'crafted_staff_1',
@@ -225,11 +235,13 @@ export const RECIPES: Recipe[] = [
     description: '強力的法杖',
     category: 'fletching',
     itemType: 'equipment',
-    icon: '🪄',
+    icon: '🔮',
     costs: { wood: 70, herb: 25 },
+    partCosts: { common_part: 6, rare_part: 1 },
     goldCost: 500,
     outputId: 'crafted_staff_2',
     outputAmount: 1,
+    levelRequired: 5,
   },
   {
     id: 'wooden_ring',
@@ -372,6 +384,182 @@ export const RECIPES: Recipe[] = [
     outputId: 'crafted_amulet_1',
     outputAmount: 1,
   },
+
+  // ========== TOOLS (gathering boost) ==========
+  // Iron Pickaxe - Ore gathering +25%
+  {
+    id: 'iron_pickaxe',
+    name: '鐵鎬',
+    description: '礦石採集速度 +25%',
+    category: 'forge',
+    itemType: 'tool',
+    icon: '⛏️',
+    costs: { ore: 30 },
+    goldCost: 500,
+    outputId: 'tool_pickaxe_1',
+    outputAmount: 1,
+    levelRequired: 1,
+  },
+  // Steel Pickaxe - Ore gathering +50%
+  {
+    id: 'steel_pickaxe',
+    name: '鋼鎬',
+    description: '礦石採集速度 +50%',
+    category: 'forge',
+    itemType: 'tool',
+    icon: '⛏️',
+    costs: { ore: 80 },
+    goldCost: 2000,
+    outputId: 'tool_pickaxe_2',
+    outputAmount: 1,
+    levelRequired: 5,
+  },
+  // Woodcutting Axe - Wood gathering +25%
+  {
+    id: 'woodcutting_axe',
+    name: '伐木斧',
+    description: '木材採集速度 +25%',
+    category: 'fletching',
+    itemType: 'tool',
+    icon: '🪓',
+    costs: { wood: 30 },
+    goldCost: 500,
+    outputId: 'tool_axe_1',
+    outputAmount: 1,
+    levelRequired: 1,
+  },
+  // Fine Woodcutting Axe - Wood gathering +50%
+  {
+    id: 'fine_woodcutting_axe',
+    name: '精鋼斧',
+    description: '木材採集速度 +50%',
+    category: 'fletching',
+    itemType: 'tool',
+    icon: '🪓',
+    costs: { wood: 80 },
+    goldCost: 2000,
+    outputId: 'tool_axe_2',
+    outputAmount: 1,
+    levelRequired: 5,
+  },
+  // Fishing Rod - Fish gathering +25%
+  {
+    id: 'fishing_rod',
+    name: '釣竿',
+    description: '魚獲採集速度 +25%',
+    category: 'cooking',
+    itemType: 'tool',
+    icon: '🎣',
+    costs: { wood: 30, fish: 20 },
+    goldCost: 500,
+    outputId: 'tool_rod_1',
+    outputAmount: 1,
+    levelRequired: 1,
+  },
+  // Fine Fishing Rod - Fish gathering +50%
+  {
+    id: 'fine_fishing_rod',
+    name: '精良釣竿',
+    description: '魚獲採集速度 +50%',
+    category: 'cooking',
+    itemType: 'tool',
+    icon: '🎣',
+    costs: { wood: 80, fish: 50 },
+    goldCost: 2000,
+    outputId: 'tool_rod_2',
+    outputAmount: 1,
+    levelRequired: 5,
+  },
+  // Sickle - Herb gathering +25%
+  {
+    id: 'sickle',
+    name: '鐮刀',
+    description: '草藥採集速度 +25%',
+    category: 'alchemy',
+    itemType: 'tool',
+    icon: '🌿',
+    costs: { ore: 20, wood: 20 },
+    goldCost: 500,
+    outputId: 'tool_sickle_1',
+    outputAmount: 1,
+    levelRequired: 1,
+  },
+  // Fine Sickle - Herb gathering +50%
+  {
+    id: 'fine_sickle',
+    name: '精良鐮刀',
+    description: '草藥採集速度 +50%',
+    category: 'alchemy',
+    itemType: 'tool',
+    icon: '🌿',
+    costs: { ore: 50, wood: 50 },
+    goldCost: 2000,
+    outputId: 'tool_sickle_2',
+    outputAmount: 1,
+    levelRequired: 5,
+  },
+
+  // ========== AFFIX EQUIPMENT (special effects) ==========
+  // Gold Find Ring
+  {
+    id: 'gold_ring',
+    name: '財富戒指',
+    description: '金幣掉落 +20%',
+    category: 'forge',
+    itemType: 'equipment',
+    icon: '💰',
+    costs: { ore: 50 },
+    partCosts: { rare_part: 3 },
+    goldCost: 1000,
+    outputId: 'crafted_gold_ring',
+    outputAmount: 1,
+    levelRequired: 5,
+  },
+  // Life Steal Amulet
+  {
+    id: 'vampire_amulet',
+    name: '吸血護符',
+    description: '攻擊回復 3% 傷害為 HP',
+    category: 'alchemy',
+    itemType: 'equipment',
+    icon: '🧛',
+    costs: { herb: 60, fish: 20 },
+    partCosts: { rare_part: 5 },
+    goldCost: 1500,
+    outputId: 'crafted_vampire_amulet',
+    outputAmount: 1,
+    levelRequired: 7,
+  },
+  // Thorns Shield
+  {
+    id: 'thorns_shield',
+    name: '荊棘盾',
+    description: '受擊反彈 15% 傷害',
+    category: 'forge',
+    itemType: 'equipment',
+    icon: '🛡️',
+    costs: { ore: 70, herb: 20 },
+    partCosts: { rare_part: 5 },
+    goldCost: 1500,
+    outputId: 'crafted_thorns_shield',
+    outputAmount: 1,
+    levelRequired: 7,
+  },
+  // Boss Slayer Sword
+  {
+    id: 'boss_slayer_sword',
+    name: '屠龍劍',
+    description: '對 Boss +25% 傷害',
+    category: 'forge',
+    itemType: 'equipment',
+    icon: '🗡️',
+    costs: { ore: 100, wood: 30 },
+    partCosts: { rare_part: 5, boss_part: 2 },
+    goldCost: 3000,
+    outputId: 'crafted_boss_sword',
+    outputAmount: 1,
+    levelRequired: 10,
+  },
 ];
 
 // ========== HELPER FUNCTIONS ==========
@@ -390,7 +578,8 @@ export const ALL_CATEGORIES: CraftingCategory[] = ['forge', 'fletching', 'cookin
 export const canAffordRecipe = (
   recipe: Recipe,
   resources: Record<ResourceType, number>,
-  gold: number
+  gold: number,
+  monsterParts?: Record<MonsterPartType, number>
 ): boolean => {
   // Check gold
   if (recipe.goldCost && gold < recipe.goldCost) {
@@ -404,5 +593,47 @@ export const canAffordRecipe = (
     }
   }
 
+  // Check monster parts
+  if (recipe.partCosts && monsterParts) {
+    for (const [part, amount] of Object.entries(recipe.partCosts)) {
+      if ((monsterParts[part as MonsterPartType] || 0) < amount) {
+        return false;
+      }
+    }
+  }
+
   return true;
+};
+
+// ========== CRAFTING LEVEL SYSTEM ==========
+
+// XP required to reach next level
+export const getCraftingXpRequired = (level: number): number => {
+  return Math.floor(100 * Math.pow(1.5, level));
+};
+
+// XP gained from crafting a recipe
+export const getRecipeXp = (recipe: Recipe): number => {
+  // XP = total resource cost * 5 + gold cost / 10
+  let resourceXp = 0;
+  for (const amount of Object.values(recipe.costs)) {
+    resourceXp += (amount || 0) * 5;
+  }
+  const goldXp = (recipe.goldCost || 0) / 10;
+  return Math.floor(resourceXp + goldXp);
+};
+
+// Crafting level bonuses
+export const CRAFTING_LEVEL_EFFECTS = {
+  qualityBonusPerLevel: 0.05, // +5% item quality per level
+  doubleOutputLevel: 15,      // Level 15: 10% chance double output
+  doubleOutputChance: 0.10,
+  resourceSaveLevel: 20,      // Level 20: 20% chance to save resources
+  resourceSaveChance: 0.20,
+};
+
+// Check if recipe is unlocked based on crafting level
+export const isRecipeUnlocked = (recipe: Recipe, craftingLevel: number): boolean => {
+  const required = recipe.levelRequired || 1;
+  return craftingLevel >= required;
 };

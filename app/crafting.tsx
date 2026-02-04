@@ -1,24 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
+  Pressable,
+  Animated,
+  Platform,
 } from 'react-native';
 import { COLORS } from '../src/constants/theme';
 import { TopBar } from '../src/components/ui/TopBar';
 import { useGameStore } from '../src/store/useGameStore';
+import { CraftingCategory } from '../src/types';
 import {
   CRAFTING_CATEGORIES,
   RECIPES,
   getRecipesByCategory,
   canAffordRecipe,
-  CraftingCategory,
   Recipe,
 } from '../src/data/crafting';
 import { getConsumableById } from '../src/data/consumables';
 import { formatNumber } from '../src/utils/format';
+import { audioManager } from '../src/lib/audio';
 
 const CategoryTab: React.FC<{
   category: CraftingCategory;
@@ -26,18 +29,122 @@ const CategoryTab: React.FC<{
   onPress: () => void;
 }> = ({ category, isSelected, onPress }) => {
   const info = CRAFTING_CATEGORIES[category];
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = useCallback(() => {
+    Animated.spring(scaleAnim, {
+      toValue: 0.92,
+      useNativeDriver: true,
+      speed: 50,
+      bounciness: 4,
+    }).start();
+  }, [scaleAnim]);
+
+  const handlePressOut = useCallback(() => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+      speed: 50,
+      bounciness: 8,
+    }).start();
+  }, [scaleAnim]);
+
+  const handlePress = useCallback(() => {
+    audioManager.playClick();
+    onPress();
+  }, [onPress]);
+
   return (
-    <TouchableOpacity
-      style={[styles.categoryTab, isSelected && styles.categoryTabSelected]}
-      onPress={onPress}
-      activeOpacity={0.7}
-    >
-      <Text style={styles.categoryIcon}>{info.icon}</Text>
-      <Text style={[styles.categoryName, isSelected && styles.categoryNameSelected]}>
-        {info.name}
-      </Text>
-    </TouchableOpacity>
+    <Pressable onPressIn={handlePressIn} onPressOut={handlePressOut} onPress={handlePress}>
+      {(state) => {
+        const hovered = Platform.OS === 'web' && (state as any).hovered;
+        return (
+          <Animated.View
+            style={[
+              styles.categoryTab,
+              isSelected && styles.categoryTabSelected,
+              hovered && !isSelected && styles.categoryTabHovered,
+              { transform: [{ scale: scaleAnim }] },
+            ]}
+          >
+            <Text style={styles.categoryIcon}>{info.icon}</Text>
+            <Text style={[styles.categoryName, isSelected && styles.categoryNameSelected]}>
+              {info.name}
+            </Text>
+          </Animated.View>
+        );
+      }}
+    </Pressable>
   );
+};
+
+const CraftButton: React.FC<{
+  canAfford: boolean;
+  onPress: () => void;
+}> = ({ canAfford, onPress }) => {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = useCallback(() => {
+    if (!canAfford) return;
+    Animated.spring(scaleAnim, {
+      toValue: 0.95,
+      useNativeDriver: true,
+      speed: 50,
+      bounciness: 4,
+    }).start();
+  }, [scaleAnim, canAfford]);
+
+  const handlePressOut = useCallback(() => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+      speed: 50,
+      bounciness: 8,
+    }).start();
+  }, [scaleAnim]);
+
+  const handlePress = useCallback(() => {
+    if (canAfford) {
+      audioManager.playSuccess();
+      onPress();
+    } else {
+      audioManager.playError();
+    }
+  }, [canAfford, onPress]);
+
+  return (
+    <Pressable
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      onPress={handlePress}
+      disabled={!canAfford}
+    >
+      {(state) => {
+        const hovered = Platform.OS === 'web' && (state as any).hovered;
+        return (
+          <Animated.View
+            style={[
+              styles.craftButton,
+              !canAfford && styles.craftButtonDisabled,
+              canAfford && hovered && styles.craftButtonHovered,
+              canAfford && state.pressed && styles.craftButtonPressed,
+              { transform: [{ scale: scaleAnim }] },
+            ]}
+          >
+            <Text style={styles.craftButtonText}>
+              {canAfford ? '製作' : '材料不足'}
+            </Text>
+          </Animated.View>
+        );
+      }}
+    </Pressable>
+  );
+};
+
+const PART_ICONS: Record<string, string> = {
+  common_part: '🦴',
+  rare_part: '💎',
+  boss_part: '👑',
 };
 
 const RecipeCard: React.FC<{
@@ -47,6 +154,7 @@ const RecipeCard: React.FC<{
 }> = ({ recipe, canAfford, onCraft }) => {
   const resources = useGameStore((state) => state.gathering.resources);
   const gold = useGameStore((state) => state.gold);
+  const monsterParts = useGameStore((state) => state.monsterParts);
 
   return (
     <View style={[styles.recipeCard, !canAfford && styles.recipeCardDisabled]}>
@@ -80,18 +188,19 @@ const RecipeCard: React.FC<{
             </Text>
           </View>
         )}
+        {recipe.partCosts && Object.entries(recipe.partCosts).map(([part, amount]) => {
+          const hasEnough = (monsterParts[part as keyof typeof monsterParts] || 0) >= amount;
+          return (
+            <View key={part} style={styles.costItem}>
+              <Text style={[styles.costText, !hasEnough && styles.costTextInsufficient]}>
+                {PART_ICONS[part] || '❓'} {amount}
+              </Text>
+            </View>
+          );
+        })}
       </View>
 
-      <TouchableOpacity
-        style={[styles.craftButton, !canAfford && styles.craftButtonDisabled]}
-        onPress={onCraft}
-        disabled={!canAfford}
-        activeOpacity={0.7}
-      >
-        <Text style={styles.craftButtonText}>
-          {canAfford ? '製作' : '材料不足'}
-        </Text>
-      </TouchableOpacity>
+      <CraftButton canAfford={canAfford} onPress={onCraft} />
     </View>
   );
 };
@@ -99,6 +208,7 @@ const RecipeCard: React.FC<{
 const ResourceDisplay: React.FC = () => {
   const resources = useGameStore((state) => state.gathering.resources);
   const resourceCaps = useGameStore((state) => state.gathering.resourceCaps);
+  const monsterParts = useGameStore((state) => state.monsterParts);
 
   return (
     <View style={styles.resourceDisplay}>
@@ -118,6 +228,18 @@ const ResourceDisplay: React.FC = () => {
         <Text style={styles.resourceIcon}>🌿</Text>
         <Text style={styles.resourceText}>{resources.herb}/{resourceCaps.herb}</Text>
       </View>
+      <View style={styles.resourceItem}>
+        <Text style={styles.resourceIcon}>🦴</Text>
+        <Text style={styles.resourceText}>{monsterParts.common_part}</Text>
+      </View>
+      <View style={styles.resourceItem}>
+        <Text style={styles.resourceIcon}>💎</Text>
+        <Text style={styles.resourceText}>{monsterParts.rare_part}</Text>
+      </View>
+      <View style={styles.resourceItem}>
+        <Text style={styles.resourceIcon}>👑</Text>
+        <Text style={styles.resourceText}>{monsterParts.boss_part}</Text>
+      </View>
     </View>
   );
 };
@@ -126,6 +248,7 @@ export default function CraftingScreen() {
   const [selectedCategory, setSelectedCategory] = useState<CraftingCategory>('cooking');
   const resources = useGameStore((state) => state.gathering.resources);
   const gold = useGameStore((state) => state.gold);
+  const monsterParts = useGameStore((state) => state.monsterParts);
   const craftItem = useGameStore((state) => state.craftItem);
 
   const recipes = getRecipesByCategory(selectedCategory);
@@ -168,7 +291,7 @@ export default function CraftingScreen() {
           <RecipeCard
             key={recipe.id}
             recipe={recipe}
-            canAfford={canAffordRecipe(recipe, resources, gold)}
+            canAfford={canAffordRecipe(recipe, resources, gold, monsterParts)}
             onCraft={() => handleCraft(recipe.id)}
           />
         ))}
@@ -220,9 +343,18 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     backgroundColor: COLORS.panel,
     borderRadius: 8,
+    borderWidth: 2,
+    borderColor: 'transparent',
+    borderBottomWidth: 4,
+    borderBottomColor: 'rgba(0,0,0,0.2)',
   },
   categoryTabSelected: {
     backgroundColor: COLORS.buttonPrimary,
+    borderBottomColor: '#3355aa',
+  },
+  categoryTabHovered: {
+    backgroundColor: '#1f2a4d',
+    borderColor: 'rgba(255,255,255,0.1)',
   },
   categoryIcon: {
     fontSize: 20,
@@ -309,9 +441,23 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 6,
     alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#55cc55',
+    borderBottomWidth: 4,
+    borderBottomColor: '#338833',
   },
   craftButtonDisabled: {
     backgroundColor: COLORS.buttonDisabled,
+    borderColor: '#444466',
+    borderBottomColor: '#222233',
+  },
+  craftButtonHovered: {
+    backgroundColor: '#55bb55',
+    borderColor: '#66dd66',
+  },
+  craftButtonPressed: {
+    borderBottomWidth: 2,
+    marginTop: 2,
   },
   craftButtonText: {
     color: COLORS.text,
