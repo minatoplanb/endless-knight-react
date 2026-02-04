@@ -1,16 +1,19 @@
 import React, { useCallback } from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { COLORS, SPACING, FONT_SIZES, scale } from '../../constants/theme';
 import { WorkerType } from '../../types';
 import { WORKERS, WORKER_MAX_LEVEL, getWorkerInterval } from '../../data/gathering';
 import { RESOURCES } from '../../data/resources';
 import { useGameStore } from '../../store/useGameStore';
+import { PressableButton } from '../common/PressableButton';
+import { useTranslation } from '../../locales';
 
 interface WorkerCardProps {
   workerType: WorkerType;
 }
 
 export const WorkerCard = React.memo(({ workerType }: WorkerCardProps) => {
+  const { locale } = useTranslation();
   const worker = useGameStore((state) => state.gathering.workers[workerType]);
   const gold = useGameStore((state) => state.gold);
   const upgradeWorker = useGameStore((state) => state.upgradeWorker);
@@ -33,43 +36,38 @@ export const WorkerCard = React.memo(({ workerType }: WorkerCardProps) => {
     return cost.toString();
   };
 
+  const rateText = locale === 'zh' ? `1/${interval}秒` : `1/${interval}s`;
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.icon}>{workerDef.icon}</Text>
         <View style={styles.headerText}>
           <Text style={styles.name}>{workerDef.name}</Text>
-          <Text style={styles.level}>Lv.{worker.level}</Text>
+          <Text style={styles.level}>Lv.{worker.level}/{WORKER_MAX_LEVEL}</Text>
         </View>
       </View>
 
       <View style={styles.info}>
         <Text style={styles.resourceIcon}>{resourceDef.icon}</Text>
         <Text style={styles.resourceName}>{resourceDef.name}</Text>
-        <Text style={styles.rate}>1/{interval}秒</Text>
+        <Text style={styles.rate}>{rateText}</Text>
       </View>
 
       <View style={styles.progressContainer}>
         <View style={[styles.progressBar, { width: `${worker.progress * 100}%` }]} />
       </View>
 
-      <Pressable
-        style={({ pressed }) => [
-          styles.upgradeButton,
-          !canUpgrade && styles.upgradeButtonDisabled,
-          pressed && canUpgrade && styles.upgradeButtonPressed,
-        ]}
+      <PressableButton
         onPress={handleUpgrade}
         disabled={!canUpgrade}
+        variant="primary"
+        size="small"
       >
-        {isMaxLevel ? (
-          <Text style={styles.upgradeButtonText}>MAX</Text>
-        ) : (
-          <Text style={styles.upgradeButtonText}>
-            {formatCost(upgradeCost)} G
-          </Text>
-        )}
-      </Pressable>
+        <Text style={styles.upgradeButtonText}>
+          {isMaxLevel ? 'MAX' : `💰 ${formatCost(upgradeCost)}`}
+        </Text>
+      </PressableButton>
     </View>
   );
 });
@@ -132,18 +130,6 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: COLORS.hpFull,
     borderRadius: scale(2),
-  },
-  upgradeButton: {
-    backgroundColor: COLORS.buttonPrimary,
-    paddingVertical: SPACING.sm,
-    borderRadius: scale(4),
-    alignItems: 'center',
-  },
-  upgradeButtonDisabled: {
-    backgroundColor: COLORS.buttonDisabled,
-  },
-  upgradeButtonPressed: {
-    opacity: 0.7,
   },
   upgradeButtonText: {
     color: COLORS.text,

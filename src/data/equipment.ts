@@ -277,6 +277,25 @@ export const RARITY_NAMES: Record<Rarity, string> = {
   legendary: '傳說',
 };
 
+// Rarity display names (English)
+export const RARITY_NAMES_EN: Record<Rarity, string> = {
+  common: 'Common',
+  uncommon: 'Uncommon',
+  rare: 'Rare',
+  epic: 'Epic',
+  legendary: 'Legendary',
+};
+
+// Slot display names (English)
+export const SLOT_NAMES_EN: Record<EquipmentSlotType, string> = {
+  weapon: 'Weapon',
+  helmet: 'Helmet',
+  armor: 'Armor',
+  shield: 'Shield',
+  ring: 'Ring',
+  amulet: 'Amulet',
+};
+
 // Level scaling for item stats
 export const ITEM_LEVEL_MULTIPLIER = 0.05; // +5% per item level
 

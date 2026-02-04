@@ -2,8 +2,9 @@ import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated, Image, TouchableOpacity, Platform } from 'react-native';
 import { useGameStore } from '../../store/useGameStore';
 import { COLORS, SPACING, FONT_SIZES, scale, PIXEL_ART_IMAGE_STYLE, EQUIPMENT_EMOJI } from '../../constants/theme';
-import { RARITY_NAMES, SLOT_NAMES } from '../../data/equipment';
+import { RARITY_NAMES, RARITY_NAMES_EN, SLOT_NAMES, SLOT_NAMES_EN } from '../../data/equipment';
 import { Rarity, Equipment } from '../../types';
+import { useTranslation } from '../../locales';
 
 const RARITY_COLORS: Record<Rarity, string> = {
   common: COLORS.common,
@@ -28,21 +29,22 @@ const EQUIPMENT_ICONS: Record<string, any> = {
   boots: require('../../../assets/icons/boots.png'),
 };
 
-const formatStat = (key: string, value: number): string => {
+const formatStat = (key: string, value: number, locale: string): string => {
   const sign = value >= 0 ? '+' : '';
+  const isZh = locale === 'zh';
   switch (key) {
     case 'atk':
-      return `${sign}${value} 攻擊`;
+      return `${sign}${value} ${isZh ? '攻擊' : 'ATK'}`;
     case 'def':
-      return `${sign}${value} 防禦`;
+      return `${sign}${value} ${isZh ? '防禦' : 'DEF'}`;
     case 'maxHp':
-      return `${sign}${value} 生命`;
+      return `${sign}${value} ${isZh ? '生命' : 'HP'}`;
     case 'attackSpeed':
-      return `${sign}${(value * 100).toFixed(0)}% 攻速`;
+      return `${sign}${(value * 100).toFixed(0)}% ${isZh ? '攻速' : 'SPD'}`;
     case 'critChance':
-      return `${sign}${(value * 100).toFixed(1)}% 暴擊`;
+      return `${sign}${(value * 100).toFixed(1)}% ${isZh ? '暴擊' : 'CRIT'}`;
     case 'critMultiplier':
-      return `${sign}${(value * 100).toFixed(0)}% 暴傷`;
+      return `${sign}${(value * 100).toFixed(0)}% ${isZh ? '暴傷' : 'CDMG'}`;
     default:
       return `${sign}${value}`;
   }
@@ -52,9 +54,14 @@ const formatStat = (key: string, value: number): string => {
 const TOAST_DURATION = 3000;
 
 export const LootModal = React.memo(() => {
+  const { locale } = useTranslation();
   const showLootModal = useGameStore((state) => state.showLootModal);
   const pendingLoot = useGameStore((state) => state.pendingLoot);
   const dismissLootToast = useGameStore((state) => state.dismissLootToast);
+
+  const isZh = locale === 'zh';
+  const rarityNames = isZh ? RARITY_NAMES : RARITY_NAMES_EN;
+  const slotNames = isZh ? SLOT_NAMES : SLOT_NAMES_EN;
 
   const slideAnim = useRef(new Animated.Value(-200)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
@@ -131,7 +138,7 @@ export const LootModal = React.memo(() => {
       <TouchableOpacity activeOpacity={0.8} onPress={handleDismiss}>
         <View style={[styles.toast, { borderColor: rarityColor }]}>
           <View style={styles.header}>
-            <Text style={styles.headerText}>獲得裝備！</Text>
+            <Text style={styles.headerText}>{isZh ? '獲得裝備！' : 'Loot!'}</Text>
           </View>
           <View style={styles.content}>
             {iconSource && (
@@ -146,7 +153,7 @@ export const LootModal = React.memo(() => {
                 {pendingLoot.name}
               </Text>
               <Text style={styles.itemMeta}>
-                {RARITY_NAMES[pendingLoot.rarity]} {SLOT_NAMES[pendingLoot.slot]}
+                {rarityNames[pendingLoot.rarity]} {slotNames[pendingLoot.slot]}
               </Text>
               <View style={styles.statsRow}>
                 {Object.entries(pendingLoot.stats).map(([key, value]) =>
@@ -158,14 +165,14 @@ export const LootModal = React.memo(() => {
                         { color: value > 0 ? COLORS.hpFull : COLORS.hpLow },
                       ]}
                     >
-                      {formatStat(key, value)}
+                      {formatStat(key, value, locale)}
                     </Text>
                   ) : null
                 )}
               </View>
             </View>
           </View>
-          <Text style={styles.autoText}>點擊關閉</Text>
+          <Text style={styles.autoText}>{isZh ? '點擊關閉' : 'Tap to close'}</Text>
         </View>
       </TouchableOpacity>
     </Animated.View>
