@@ -346,6 +346,7 @@ export interface GameState {
   lootNotifications: LootNotification[];
   combatLog: CombatLogEntry[];
   isPlayerDead: boolean;
+  isBattlePaused: boolean; // Pause combat (gathering continues)
   showDeathModal: boolean;
   showOfflineModal: boolean;
   showLootModal: boolean;
@@ -368,6 +369,7 @@ export interface GameActions {
   startGame: () => void;
   stopGame: () => void;
   resetAfterDeath: () => void;
+  toggleBattlePause: () => void;
 
   // Combat
   playerAttack: () => void;

@@ -149,6 +149,7 @@ export const BattleView = React.memo(() => {
   const stage = useGameStore((state) => state.stage);
   const playerCombatStyle = useGameStore((state) => state.combatStyle);
   const killStreak = useGameStore((state) => state.statistics.currentKillStreak);
+  const isBattlePaused = useGameStore((state) => state.isBattlePaused);
 
   const [playerHurt, setPlayerHurt] = useState(false);
   const [enemyHurt, setEnemyHurt] = useState(false);
@@ -222,6 +223,17 @@ export const BattleView = React.memo(() => {
                 ]}
               />
             </View>
+          </View>
+        </View>
+      )}
+
+      {/* Paused Indicator - centered overlay */}
+      {isBattlePaused && !stage.isTraveling && (
+        <View style={styles.pausedOverlay}>
+          <View style={styles.pausedCard}>
+            <Text style={styles.pausedEmoji}>⏸️</Text>
+            <Text style={styles.pausedLabel}>{t('battlePause.paused')}</Text>
+            <Text style={styles.pausedHint}>{t('battlePause.resume')}</Text>
           </View>
         </View>
       )}
@@ -473,5 +485,35 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZES.sm,
     color: COLORS.text,
     fontWeight: 'bold',
+  },
+  pausedOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 5,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+  pausedCard: {
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    paddingHorizontal: SPACING.xl,
+    paddingVertical: SPACING.lg,
+    borderRadius: scale(16),
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#ef4444',
+  },
+  pausedEmoji: {
+    fontSize: scale(40),
+    marginBottom: SPACING.sm,
+  },
+  pausedLabel: {
+    fontSize: FONT_SIZES.lg,
+    color: '#ef4444',
+    fontWeight: 'bold',
+    marginBottom: SPACING.xs,
+  },
+  pausedHint: {
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.textDim,
   },
 });

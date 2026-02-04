@@ -424,6 +424,7 @@ const initialState: GameState = {
   lootNotifications: [],
   combatLog: [],
   isPlayerDead: false,
+  isBattlePaused: false,
   showDeathModal: false,
   showOfflineModal: false,
   showLootModal: false,
@@ -455,6 +456,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
     get().checkAchievements();
 
     if (state.isPlayerDead) return;
+
+    // Skip combat when paused (but gathering, buffs, achievements still run)
+    if (state.isBattlePaused) return;
 
     // Auto-consume healing items when HP is low
     get().tickAutoConsume();
@@ -505,6 +509,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   stopGame: () => {
     set({ isRunning: false });
+  },
+
+  toggleBattlePause: () => {
+    set((state) => ({ isBattlePaused: !state.isBattlePaused }));
   },
 
   resetAfterDeath: () => {

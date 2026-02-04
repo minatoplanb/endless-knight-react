@@ -86,6 +86,8 @@ export const ActionBar = React.memo(() => {
   const useConsumable = useGameStore((state) => state.useConsumable);
   const isSkillReady = useGameStore((state) => state.isSkillReady);
   const getSkillCooldownRemaining = useGameStore((state) => state.getSkillCooldownRemaining);
+  const isBattlePaused = useGameStore((state) => state.isBattlePaused);
+  const toggleBattlePause = useGameStore((state) => state.toggleBattlePause);
 
   // Tooltip states
   const [tooltipSkill, setTooltipSkill] = useState<SkillId | null>(null);
@@ -138,6 +140,14 @@ export const ActionBar = React.memo(() => {
 
       {/* Main Action Row */}
       <View style={styles.actionRow}>
+        {/* Pause Button */}
+        <Pressable
+          style={[styles.actionButton, styles.pauseButton, isBattlePaused && styles.pauseButtonActive]}
+          onPress={toggleBattlePause}
+        >
+          <Text style={styles.buttonIcon}>{isBattlePaused ? '▶️' : '⏸️'}</Text>
+        </Pressable>
+
         {/* Consumables */}
         {displayConsumables.map((stack) => (
           <ConsumableButton
@@ -333,6 +343,15 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.panel,
     borderWidth: 1,
     borderColor: COLORS.uncommon,
+  },
+  pauseButton: {
+    backgroundColor: COLORS.panel,
+    borderWidth: 1,
+    borderColor: COLORS.textDim,
+  },
+  pauseButtonActive: {
+    backgroundColor: '#ef4444',
+    borderColor: '#ef4444',
   },
   locked: {
     backgroundColor: COLORS.buttonDisabled,

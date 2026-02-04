@@ -202,4 +202,9 @@ export type LocaleStrings = {
     enemyLevel: string;
     bossLevel: string;
   };
+  battlePause: {
+    pause: string;
+    resume: string;
+    paused: string;
+  };
 };

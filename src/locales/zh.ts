@@ -202,4 +202,9 @@ export const zh: LocaleStrings = {
     enemyLevel: '敵人等級',
     bossLevel: 'Boss 等級',
   },
+  battlePause: {
+    pause: '暫停',
+    resume: '繼續',
+    paused: '戰鬥暫停中',
+  },
 };

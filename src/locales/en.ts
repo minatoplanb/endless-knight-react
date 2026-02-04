@@ -202,6 +202,11 @@ export const en: LocaleStrings = {
     enemyLevel: 'Enemy Lv',
     bossLevel: 'Boss Lv',
   },
+  battlePause: {
+    pause: 'Pause',
+    resume: 'Resume',
+    paused: 'Battle Paused',
+  },
 };
 
 // English names for game data (areas, enemies, etc.). Used when locale is 'en'.
