@@ -1,10 +1,35 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, Image, Platform } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Image, Platform, TouchableOpacity, ScrollView } from 'react-native';
 import { useGameStore } from '../../store/useGameStore';
 import { COLORS, SPACING, FONT_SIZES, scale, PIXEL_ART_IMAGE_STYLE, EQUIPMENT_EMOJI } from '../../constants/theme';
-import { Equipment, Rarity } from '../../types';
+import { Equipment, Rarity, EquipmentSlotType } from '../../types';
 import { ItemDetail } from './ItemDetail';
 import { getSellPrice } from '../../data/equipment';
+import { useTranslation } from '../../locales';
+
+// Filter and sort types
+type SlotFilter = 'all' | EquipmentSlotType;
+type RarityFilter = 'all' | Rarity;
+type SortOption = 'level_desc' | 'level_asc' | 'rarity_desc' | 'enhance_desc';
+
+const SLOT_FILTERS: { value: SlotFilter; label: string; icon: string }[] = [
+  { value: 'all', label: '全部', icon: '📦' },
+  { value: 'weapon', label: '武器', icon: '⚔️' },
+  { value: 'helmet', label: '頭盔', icon: '🪖' },
+  { value: 'armor', label: '盔甲', icon: '🛡️' },
+  { value: 'shield', label: '盾牌', icon: '🔰' },
+  { value: 'ring', label: '戒指', icon: '💍' },
+  { value: 'amulet', label: '項鏈', icon: '📿' },
+];
+
+const RARITY_ORDER: Rarity[] = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+
+const SORT_OPTIONS: { value: SortOption; label: string }[] = [
+  { value: 'level_desc', label: '等級 ↓' },
+  { value: 'level_asc', label: '等級 ↑' },
+  { value: 'rarity_desc', label: '稀有度 ↓' },
+  { value: 'enhance_desc', label: '強化 ↓' },
+];
 
 const RARITY_COLORS: Record<Rarity, string> = {
   common: COLORS.common,
@@ -75,6 +100,7 @@ const InventoryItem = React.memo(
 );
 
 export const InventoryGrid = React.memo(() => {
+  const { t, locale } = useTranslation();
   const inventory = useGameStore((state) => state.inventory);
   const equipment = useGameStore((state) => state.equipment);
   const equipItem = useGameStore((state) => state.equipItem);
@@ -83,7 +109,40 @@ export const InventoryGrid = React.memo(() => {
   const getBackpackCapacity = useGameStore((state) => state.getBackpackCapacity);
   const [selectedItem, setSelectedItem] = useState<Equipment | null>(null);
 
+  // Filter and sort state
+  const [slotFilter, setSlotFilter] = useState<SlotFilter>('all');
+  const [sortOption, setSortOption] = useState<SortOption>('level_desc');
+  const [showFilters, setShowFilters] = useState(false);
+
   const capacity = getBackpackCapacity();
+
+  // Apply filters and sorting
+  const filteredAndSortedInventory = useMemo(() => {
+    let items = [...inventory];
+
+    // Apply slot filter
+    if (slotFilter !== 'all') {
+      items = items.filter(item => item.slot === slotFilter);
+    }
+
+    // Apply sorting
+    items.sort((a, b) => {
+      switch (sortOption) {
+        case 'level_desc':
+          return b.level - a.level;
+        case 'level_asc':
+          return a.level - b.level;
+        case 'rarity_desc':
+          return RARITY_ORDER.indexOf(b.rarity) - RARITY_ORDER.indexOf(a.rarity);
+        case 'enhance_desc':
+          return b.enhancementLevel - a.enhancementLevel;
+        default:
+          return 0;
+      }
+    });
+
+    return items;
+  }, [inventory, slotFilter, sortOption]);
 
   const handleItemPress = useCallback(
     (item: Equipment) => {
@@ -126,22 +185,84 @@ export const InventoryGrid = React.memo(() => {
   // 把背包物品切成每列 5 個，用普通 View 排版，避免 FlatList + ScrollView 的警告
   const rows = useMemo(() => {
     const result: Equipment[][] = [];
-    for (let i = 0; i < inventory.length; i += 5) {
-      result.push(inventory.slice(i, i + 5));
+    for (let i = 0; i < filteredAndSortedInventory.length; i += 5) {
+      result.push(filteredAndSortedInventory.slice(i, i + 5));
     }
     return result;
-  }, [inventory]);
+  }, [filteredAndSortedInventory]);
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>背包</Text>
-        <Text style={styles.count}>
-          {inventory.length}/{capacity}
-        </Text>
+        <Text style={styles.title}>{locale === 'zh' ? '背包' : 'Backpack'}</Text>
+        <View style={styles.headerRight}>
+          <TouchableOpacity
+            style={[styles.filterToggle, showFilters && styles.filterToggleActive]}
+            onPress={() => setShowFilters(!showFilters)}
+          >
+            <Text style={styles.filterToggleText}>🔍</Text>
+          </TouchableOpacity>
+          <Text style={styles.count}>
+            {filteredAndSortedInventory.length}/{inventory.length}/{capacity}
+          </Text>
+        </View>
       </View>
 
-      {inventory.length === 0 ? (
+      {/* Filter Controls */}
+      {showFilters && (
+        <View style={styles.filterContainer}>
+          {/* Slot Filter */}
+          <View style={styles.filterSection}>
+            <Text style={styles.filterLabel}>{locale === 'zh' ? '類型' : 'Type'}</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={styles.filterRow}>
+                {SLOT_FILTERS.map((filter) => (
+                  <TouchableOpacity
+                    key={filter.value}
+                    style={[
+                      styles.filterChip,
+                      slotFilter === filter.value && styles.filterChipActive,
+                    ]}
+                    onPress={() => setSlotFilter(filter.value)}
+                  >
+                    <Text style={styles.filterChipIcon}>{filter.icon}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+          </View>
+
+          {/* Sort Options */}
+          <View style={styles.filterSection}>
+            <Text style={styles.filterLabel}>{locale === 'zh' ? '排序' : 'Sort'}</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={styles.filterRow}>
+                {SORT_OPTIONS.map((option) => (
+                  <TouchableOpacity
+                    key={option.value}
+                    style={[
+                      styles.sortChip,
+                      sortOption === option.value && styles.sortChipActive,
+                    ]}
+                    onPress={() => setSortOption(option.value)}
+                  >
+                    <Text
+                      style={[
+                        styles.sortChipText,
+                        sortOption === option.value && styles.sortChipTextActive,
+                      ]}
+                    >
+                      {option.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      )}
+
+      {filteredAndSortedInventory.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyText}>背包是空的</Text>
           <Text style={styles.emptySubtext}>擊敗敵人獲取裝備</Text>
@@ -193,7 +314,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: SPACING.md,
+    marginBottom: SPACING.sm,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
   },
   title: {
     fontSize: FONT_SIZES.lg,
@@ -201,8 +327,77 @@ const styles = StyleSheet.create({
     color: COLORS.text,
   },
   count: {
-    fontSize: FONT_SIZES.md,
+    fontSize: FONT_SIZES.sm,
     color: COLORS.textDim,
+  },
+  filterToggle: {
+    width: scale(28),
+    height: scale(28),
+    borderRadius: scale(6),
+    backgroundColor: COLORS.bgLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  filterToggleActive: {
+    backgroundColor: COLORS.buttonPrimary,
+  },
+  filterToggleText: {
+    fontSize: scale(14),
+  },
+  filterContainer: {
+    backgroundColor: COLORS.bgLight,
+    borderRadius: scale(8),
+    padding: SPACING.sm,
+    marginBottom: SPACING.sm,
+  },
+  filterSection: {
+    marginBottom: SPACING.xs,
+  },
+  filterLabel: {
+    fontSize: FONT_SIZES.xs,
+    color: COLORS.textDim,
+    marginBottom: SPACING.xs,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    gap: SPACING.xs,
+  },
+  filterChip: {
+    width: scale(32),
+    height: scale(32),
+    borderRadius: scale(6),
+    backgroundColor: COLORS.bg,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  filterChipActive: {
+    borderColor: COLORS.buttonPrimary,
+    backgroundColor: 'rgba(68, 102, 170, 0.3)',
+  },
+  filterChipIcon: {
+    fontSize: scale(16),
+  },
+  sortChip: {
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    borderRadius: scale(12),
+    backgroundColor: COLORS.bg,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  sortChipActive: {
+    borderColor: COLORS.textGold,
+    backgroundColor: 'rgba(255, 215, 0, 0.2)',
+  },
+  sortChipText: {
+    fontSize: FONT_SIZES.xs,
+    color: COLORS.textDim,
+  },
+  sortChipTextActive: {
+    color: COLORS.textGold,
+    fontWeight: 'bold',
   },
   gridContent: {
     paddingBottom: SPACING.md,
