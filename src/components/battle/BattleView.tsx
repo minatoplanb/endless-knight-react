@@ -5,6 +5,7 @@ import { COLORS, SPACING, FONT_SIZES, scale, SCREEN } from '../../constants/them
 import { HealthBar } from './HealthBar';
 import { CharacterSprite } from './CharacterSprite';
 import { DamagePopupItem } from './DamagePopup';
+import { LootNotificationItem } from './LootNotification';
 import { getAreaById, AreaEnemy } from '../../data/areas';
 import { COMBAT_STYLES, hasAdvantage, CombatStyle } from '../../data/combatStyles';
 import { useTranslation } from '../../locales';
@@ -143,6 +144,8 @@ export const BattleView = React.memo(() => {
   const enemy = useGameStore((state) => state.currentEnemy);
   const damagePopups = useGameStore((state) => state.damagePopups);
   const removeDamagePopup = useGameStore((state) => state.removeDamagePopup);
+  const lootNotifications = useGameStore((state) => state.lootNotifications);
+  const removeLootNotification = useGameStore((state) => state.removeLootNotification);
   const stage = useGameStore((state) => state.stage);
   const playerCombatStyle = useGameStore((state) => state.combatStyle);
 
@@ -294,6 +297,19 @@ export const BattleView = React.memo(() => {
           </View>
         ))}
       </View>
+
+      {/* Loot notifications */}
+      <View style={styles.lootContainer}>
+        {lootNotifications.map((notification) => (
+          <LootNotificationItem
+            key={notification.id}
+            icon={notification.icon}
+            text={notification.text}
+            color={notification.color}
+            onComplete={() => removeLootNotification(notification.id)}
+          />
+        ))}
+      </View>
     </View>
   );
 });
@@ -427,5 +443,12 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: '40%',
     transform: [{ translateX: -20 }],
+  },
+  lootContainer: {
+    position: 'absolute',
+    bottom: SPACING.md,
+    right: SPACING.md,
+    alignItems: 'flex-end',
+    pointerEvents: 'none',
   },
 });

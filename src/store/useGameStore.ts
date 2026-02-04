@@ -6,6 +6,7 @@ import {
   UpgradeType,
   Enemy,
   DamagePopup,
+  LootNotification,
   SaveData,
   Equipment,
   EquipmentSlotType,
@@ -419,6 +420,7 @@ const initialState: GameState = {
   autoConsumeSlot: null,
   autoSkillEnabled: false,
   damagePopups: [],
+  lootNotifications: [],
   isPlayerDead: false,
   showDeathModal: false,
   showOfflineModal: false,
@@ -758,6 +760,25 @@ export const useGameStore = create<GameStore>((set, get) => ({
       }
     }
 
+    // Show loot notifications for monster parts (only show rare+ parts, not common)
+    const partIcons: Record<MonsterPartType, { icon: string; color: string; name: string }> = {
+      common_part: { icon: '🦴', color: '#a0a0a0', name: '普通素材' },
+      rare_part: { icon: '💎', color: '#60a5fa', name: '稀有素材' },
+      boss_part: { icon: '👑', color: '#fbbf24', name: 'Boss素材' },
+    };
+
+    // Only notify for rare and boss parts (avoid spam from common)
+    for (const [partType, amount] of Object.entries(materialDrop.monsterParts)) {
+      if (amount && amount > 0 && partType !== 'common_part') {
+        const partInfo = partIcons[partType as MonsterPartType];
+        get().addLootNotification({
+          icon: partInfo.icon,
+          text: `+${amount}`,
+          color: partInfo.color,
+        });
+      }
+    }
+
     // ========== EQUIPMENT DROPS (BOSS ONLY, RARE) ==========
     let loot: Equipment | null = null;
     let newInventory = [...state.inventory];
@@ -992,6 +1013,30 @@ export const useGameStore = create<GameStore>((set, get) => ({
   removeDamagePopup: (id) => {
     set({
       damagePopups: get().damagePopups.filter((p) => p.id !== id),
+    });
+  },
+
+  // Loot notifications
+  addLootNotification: (notification) => {
+    const newNotification: LootNotification = {
+      ...notification,
+      id: `loot_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      timestamp: Date.now(),
+    };
+
+    set({
+      lootNotifications: [...get().lootNotifications, newNotification],
+    });
+
+    // Auto-remove after 2 seconds
+    setTimeout(() => {
+      get().removeLootNotification(newNotification.id);
+    }, 2000);
+  },
+
+  removeLootNotification: (id) => {
+    set({
+      lootNotifications: get().lootNotifications.filter((n) => n.id !== id),
     });
   },
 

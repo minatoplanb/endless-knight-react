@@ -226,6 +226,14 @@ export interface DamagePopup {
   timestamp: number;
 }
 
+export interface LootNotification {
+  id: string;
+  icon: string;
+  text: string;
+  color: string;
+  timestamp: number;
+}
+
 // Statistics tracking
 export interface GameStatistics {
   totalEnemiesKilled: number;
@@ -328,6 +336,7 @@ export interface GameState {
 
   // UI State
   damagePopups: DamagePopup[];
+  lootNotifications: LootNotification[];
   isPlayerDead: boolean;
   showDeathModal: boolean;
   showOfflineModal: boolean;
@@ -445,6 +454,10 @@ export interface GameActions {
   // Damage popups
   addDamagePopup: (popup: Omit<DamagePopup, 'id' | 'timestamp'>) => void;
   removeDamagePopup: (id: string) => void;
+
+  // Loot notifications
+  addLootNotification: (notification: Omit<LootNotification, 'id' | 'timestamp'>) => void;
+  removeLootNotification: (id: string) => void;
 
   // UI
   setShowDeathModal: (show: boolean) => void;
