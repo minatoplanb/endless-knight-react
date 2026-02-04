@@ -195,4 +195,11 @@ export type LocaleStrings = {
     potion: string;
     owned: string;
   };
+  area: {
+    cleared: string;
+    locked: string;
+    recommended: string;
+    enemyLevel: string;
+    bossLevel: string;
+  };
 };

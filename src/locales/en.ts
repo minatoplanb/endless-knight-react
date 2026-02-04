@@ -195,6 +195,13 @@ export const en: LocaleStrings = {
     rare_part: 'Rare Part',
     boss_part: 'Boss Part',
   },
+  area: {
+    cleared: 'Cleared',
+    locked: 'Locked',
+    recommended: 'Rec. Lv',
+    enemyLevel: 'Enemy Lv',
+    bossLevel: 'Boss Lv',
+  },
 };
 
 // English names for game data (areas, enemies, etc.). Used when locale is 'en'.

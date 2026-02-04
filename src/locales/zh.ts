@@ -195,4 +195,11 @@ export const zh: LocaleStrings = {
     rare_part: '稀有素材',
     boss_part: 'Boss 素材',
   },
+  area: {
+    cleared: '已完成',
+    locked: '未解鎖',
+    recommended: '推薦等級',
+    enemyLevel: '敵人等級',
+    bossLevel: 'Boss 等級',
+  },
 };
