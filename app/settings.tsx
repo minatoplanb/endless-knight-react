@@ -9,6 +9,7 @@ import { useRouter } from 'expo-router';
 import { CONSUMABLES, Consumable } from '../src/data/consumables';
 import { useTranslation } from '../src/locales';
 import { firebaseService } from '../src/services/firebase';
+import { useGoogleSignIn } from '../src/hooks/useGoogleSignIn';
 
 interface SettingRowProps {
   icon: string;
@@ -54,6 +55,9 @@ export default function SettingsPage() {
   const [cloudSaveInfo, setCloudSaveInfo] = useState<{ exists: boolean; updatedAt?: Date } | null>(null);
   const [isFirebaseReady, setIsFirebaseReady] = useState(false);
 
+  // Google Sign-In
+  const { signIn: googleSignIn, signOut: googleSignOut, isLoading: isGoogleLoading, user, isAnonymous } = useGoogleSignIn();
+
   // Initialize Firebase and check status
   useEffect(() => {
     const initAndCheck = async () => {
@@ -66,6 +70,45 @@ export default function SettingsPage() {
     };
     initAndCheck();
   }, []);
+
+  // Refresh cloud save info when user changes
+  useEffect(() => {
+    const refreshCloudInfo = async () => {
+      if (firebaseService.isReady()) {
+        const info = await firebaseService.getCloudSaveInfo();
+        setCloudSaveInfo(info);
+      }
+    };
+    refreshCloudInfo();
+  }, [user]);
+
+  const handleGoogleSignIn = async () => {
+    try {
+      await googleSignIn();
+    } catch (error) {
+      Alert.alert(
+        locale === 'zh' ? '登入失敗' : 'Sign In Failed',
+        locale === 'zh' ? '無法使用 Google 登入，請稍後再試' : 'Could not sign in with Google, please try again'
+      );
+    }
+  };
+
+  const handleSignOut = async () => {
+    Alert.alert(
+      locale === 'zh' ? '登出帳號' : 'Sign Out',
+      locale === 'zh' ? '登出後將使用匿名帳戶，雲端存檔將與新帳戶綁定' : 'After signing out, you will use an anonymous account. Cloud saves will be linked to the new account.',
+      [
+        { text: locale === 'zh' ? '取消' : 'Cancel', style: 'cancel' },
+        {
+          text: locale === 'zh' ? '登出' : 'Sign Out',
+          style: 'destructive',
+          onPress: async () => {
+            await googleSignOut();
+          }
+        },
+      ]
+    );
+  };
 
   const handleCloudSync = async () => {
     if (!isFirebaseReady) {
@@ -254,6 +297,51 @@ export default function SettingsPage() {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{locale === 'zh' ? '☁️ 雲端同步' : '☁️ Cloud Sync'}</Text>
+
+          {/* Account Status */}
+          <View style={styles.accountRow}>
+            <Text style={styles.settingIcon}>{isAnonymous ? '👤' : '🔗'}</Text>
+            <View style={styles.settingInfo}>
+              <Text style={styles.settingTitle}>
+                {isAnonymous
+                  ? (locale === 'zh' ? '訪客帳戶' : 'Guest Account')
+                  : (user?.email || (locale === 'zh' ? 'Google 帳戶' : 'Google Account'))}
+              </Text>
+              <Text style={styles.settingDesc}>
+                {isAnonymous
+                  ? (locale === 'zh' ? '登入 Google 以跨設備同步' : 'Sign in with Google to sync across devices')
+                  : (locale === 'zh' ? '已連結 Google 帳戶' : 'Google account linked')}
+              </Text>
+            </View>
+          </View>
+
+          {/* Google Sign In / Sign Out Button */}
+          <TouchableOpacity
+            style={[styles.settingRow, isGoogleLoading && styles.settingRowDisabled]}
+            onPress={isAnonymous ? handleGoogleSignIn : handleSignOut}
+            disabled={isGoogleLoading}
+          >
+            {isGoogleLoading ? (
+              <ActivityIndicator size="small" color={COLORS.textGold} style={styles.settingIcon} />
+            ) : (
+              <Text style={styles.settingIcon}>{isAnonymous ? '🔑' : '🚪'}</Text>
+            )}
+            <View style={styles.settingInfo}>
+              <Text style={[styles.settingTitle, !isAnonymous && styles.settingTitleDanger]}>
+                {isAnonymous
+                  ? (locale === 'zh' ? '使用 Google 登入' : 'Sign in with Google')
+                  : (locale === 'zh' ? '登出' : 'Sign Out')}
+              </Text>
+              <Text style={styles.settingDesc}>
+                {isAnonymous
+                  ? (locale === 'zh' ? '跨設備同步遊戲進度' : 'Sync game progress across devices')
+                  : (locale === 'zh' ? '切換回訪客帳戶' : 'Switch back to guest account')}
+              </Text>
+            </View>
+            <Text style={styles.arrow}>›</Text>
+          </TouchableOpacity>
+
+          {/* Sync Button */}
           <TouchableOpacity
             style={[styles.settingRow, isCloudSyncing && styles.settingRowDisabled]}
             onPress={handleCloudSync}
@@ -272,8 +360,10 @@ export default function SettingsPage() {
             </View>
             <Text style={styles.arrow}>›</Text>
           </TouchableOpacity>
+
+          {/* Connection Status */}
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>{locale === 'zh' ? '狀態' : 'Status'}</Text>
+            <Text style={styles.infoLabel}>{locale === 'zh' ? '連線狀態' : 'Connection'}</Text>
             <Text style={[styles.infoValue, { color: isFirebaseReady ? COLORS.hpFull : COLORS.textDim }]}>
               {isFirebaseReady
                 ? (locale === 'zh' ? '已連線' : 'Connected')
@@ -405,6 +495,14 @@ const styles = StyleSheet.create({
     padding: SPACING.md,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255,255,255,0.1)',
+  },
+  accountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: 'rgba(68,102,170,0.2)',
   },
   settingRowDanger: {
     backgroundColor: 'rgba(255,68,68,0.1)',

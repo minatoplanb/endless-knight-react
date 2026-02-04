@@ -3,7 +3,11 @@ import { initializeApp, FirebaseApp } from 'firebase/app';
 import {
   getAuth,
   signInAnonymously,
+  signInWithCredential,
+  GoogleAuthProvider,
+  linkWithCredential,
   onAuthStateChanged,
+  signOut as firebaseSignOut,
   User,
   Auth,
 } from 'firebase/auth';
@@ -34,6 +38,11 @@ const firebaseConfig = {
   measurementId: "G-V49L7PQ4NG"
 };
 
+// Google OAuth Client ID - from Firebase Console
+export const GOOGLE_CLIENT_ID = {
+  web: "1038383583773-8a6ocsqvc6mshp1aut93pknert3u3010.apps.googleusercontent.com",
+};
+
 // Collection name for save data
 const SAVES_COLLECTION = 'saves';
 
@@ -44,6 +53,7 @@ class FirebaseService {
   private analytics: Analytics | null = null;
   private user: User | null = null;
   private initialized = false;
+  private authStateListeners: ((user: User | null) => void)[] = [];
 
   // Check if Firebase is configured
   private isConfigured(): boolean {
@@ -85,7 +95,8 @@ class FirebaseService {
           if (user) {
             this.user = user;
             this.initialized = true;
-            await this.logEvent('app_open', { user_id: user.uid });
+            this.notifyAuthStateListeners(user);
+            await this.logEvent('app_open', { user_id: user.uid, is_anonymous: user.isAnonymous });
             resolve(user);
           } else {
             // Auto sign in anonymously
@@ -93,11 +104,13 @@ class FirebaseService {
               const credential = await signInAnonymously(this.auth!);
               this.user = credential.user;
               this.initialized = true;
+              this.notifyAuthStateListeners(credential.user);
               await this.logEvent('anonymous_sign_in');
               resolve(credential.user);
             } catch (error) {
               console.error('Anonymous sign in failed:', error);
               this.initialized = true;
+              this.notifyAuthStateListeners(null);
               resolve(null);
             }
           }
@@ -109,6 +122,26 @@ class FirebaseService {
       this.initialized = true;
       return null;
     }
+  }
+
+  // Add auth state listener
+  onAuthStateChanged(listener: (user: User | null) => void): () => void {
+    this.authStateListeners.push(listener);
+    // Immediately call with current state
+    listener(this.user);
+    // Return unsubscribe function
+    return () => {
+      this.authStateListeners = this.authStateListeners.filter(l => l !== listener);
+    };
+  }
+
+  private notifyAuthStateListeners(user: User | null): void {
+    this.authStateListeners.forEach(listener => listener(user));
+  }
+
+  // Get Auth instance for external use
+  getAuth(): Auth | null {
+    return this.auth;
   }
 
   // Get current user
@@ -126,9 +159,71 @@ class FirebaseService {
     return this.user !== null && this.isConfigured();
   }
 
+  // Check if user is anonymous
+  isAnonymous(): boolean {
+    return this.user?.isAnonymous ?? true;
+  }
+
   // Check if Firebase is ready
   isReady(): boolean {
     return this.initialized && this.isConfigured() && this.db !== null;
+  }
+
+  // Sign in with Google using ID token from expo-auth-session
+  async signInWithGoogle(idToken: string): Promise<User | null> {
+    if (!this.auth) {
+      console.error('Auth not initialized');
+      return null;
+    }
+
+    try {
+      const credential = GoogleAuthProvider.credential(idToken);
+
+      // If currently anonymous, try to link accounts
+      if (this.user && this.user.isAnonymous) {
+        try {
+          const result = await linkWithCredential(this.user, credential);
+          this.user = result.user;
+          this.notifyAuthStateListeners(this.user);
+          await this.logEvent('google_link_success');
+          return this.user;
+        } catch (linkError: any) {
+          // If linking fails (e.g., Google account already exists), sign in directly
+          if (linkError.code === 'auth/credential-already-in-use') {
+            console.log('Google account already linked, signing in directly');
+          } else {
+            console.warn('Link failed, signing in directly:', linkError);
+          }
+        }
+      }
+
+      // Direct sign in
+      const result = await signInWithCredential(this.auth, credential);
+      this.user = result.user;
+      this.notifyAuthStateListeners(this.user);
+      await this.logEvent('google_sign_in');
+      return this.user;
+    } catch (error) {
+      console.error('Google sign in failed:', error);
+      await this.logEvent('google_sign_in_error', { error: String(error) });
+      return null;
+    }
+  }
+
+  // Sign out
+  async signOut(): Promise<void> {
+    if (!this.auth) return;
+
+    try {
+      await firebaseSignOut(this.auth);
+      // After sign out, sign in anonymously again
+      const credential = await signInAnonymously(this.auth);
+      this.user = credential.user;
+      this.notifyAuthStateListeners(this.user);
+      await this.logEvent('sign_out');
+    } catch (error) {
+      console.error('Sign out failed:', error);
+    }
   }
 
   // Save game data to Firestore
@@ -144,6 +239,8 @@ class FirebaseService {
         ...saveData,
         updatedAt: serverTimestamp(),
         platform: 'expo',
+        userEmail: this.user.email || null,
+        isAnonymous: this.user.isAnonymous,
       }, { merge: true });
 
       await this.logEvent('cloud_save');
@@ -170,7 +267,7 @@ class FirebaseService {
         const data = docSnap.data();
         await this.logEvent('cloud_load');
         // Remove Firestore-specific fields
-        const { updatedAt, platform, ...saveData } = data;
+        const { updatedAt, platform, userEmail, isAnonymous, ...saveData } = data;
         return saveData as SaveData;
       }
       return null;
