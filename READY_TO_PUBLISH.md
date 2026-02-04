@@ -2,7 +2,7 @@
 
 **日期：** 2026年2月3日  
 **版本：** 1.0.0  
-**狀態：** 🟡 等待資產完成
+**狀態：** 🟢 可建置並提交（依 `PUBLISH_NOW.md` 執行）
 
 ---
 
@@ -20,16 +20,23 @@
 | **EAS 配置** | ✅ 完成 | `eas.json` 已創建 |
 | **發布指南** | ✅ 完成 | `PUBLISH_GUIDE.md` |
 
-### ⚠️ 待你完成的項目（1-2 天）
+### ✅ 資產已就緒
 
-| 項目 | 預估時間 | 說明 |
-|------|---------|------|
-| **上傳隱私政策** | 15 分鐘 | 上傳 `privacy-policy.html` 到 GitHub Pages 或 Netlify |
-| **製作 Feature Graphic** | 1-2 小時 | 1024x500px，參考 `STORE_LISTING.md` |
-| **截取遊戲截圖** | 1 小時 | 至少 2 張（1080x1920px） |
-| **完整測試遊戲** | 2-4 小時 | 確保無嚴重 bug |
+| 項目 | 狀態 |
+|------|------|
+| 隱私政策 | ✅ GitHub Pages |
+| Feature Graphic | ✅ `store-assets/feature-graphic-1024x500.png` |
+| 截圖 | ✅ `store-assets/screenshots/`（至少 2 張符合 Play 要求） |
 
-**總時間：約 5-8 小時**
+### 接下來（由你執行）
+
+| 項目 | 說明 |
+|------|------|
+| **建置 AAB** | `eas build --platform android --profile production` |
+| **Play Console** | 填寫商店資訊、上傳 AAB、隱私政策 URL、截圖、Feature Graphic |
+| **提交審核** | 在 Console 送審 |
+
+**一頁步驟清單：** 見 **`PUBLISH_NOW.md`**
 
 ---
 
@@ -44,6 +51,7 @@
 | `STORE_LISTING.md` | 商店資訊（描述、截圖指南） | ✅ |
 | `PUBLISH_GUIDE.md` | 完整發布指南（步驟詳解） | ✅ |
 | `PRE_LAUNCH_CHECKLIST.md` | 發布前檢查清單 | ✅ |
+| `PUBLISH_NOW.md` | **一頁發布步驟**（建置 → Console → 送審） | ✅ |
 | `eas.json` | EAS Build 配置 | ✅ |
 
 ### 遊戲檔案
@@ -52,83 +60,18 @@
 |------|------|------|
 | `app.json` | 1.0.0 | ✅ |
 | 遊戲核心代碼 | 完整 | ✅ |
-| 圖示系統 | 600+ 圖示 | ✅ |
+| 裝備圖示 | 12 種（axe, bow, staff, sword×2, helmet, armor, shield, ring, amulet, gloves, boots） | ✅ |
 
 ---
 
 ## 🎯 接下來該做什麼？
 
-### 今天/明天（3-5 小時）
+**請直接依照 `PUBLISH_NOW.md` 的步驟執行。**
 
-1. **上傳隱私政策（15 分鐘）**
-   ```bash
-   # 選項 A：GitHub Pages
-   # 1. 在 GitHub 創建新 repo
-   # 2. 上傳 privacy-policy.html 作為 index.html
-   # 3. 啟用 GitHub Pages
-   # 4. 獲得 URL
-   
-   # 選項 B：Netlify
-   # 1. 註冊 netlify.com
-   # 2. 拖曳 privacy-policy.html
-   # 3. 獲得 URL
-   ```
-
-2. **製作 Feature Graphic（1-2 小時）**
-   - 使用 Canva.com（免費）
-   - 尺寸：1024 x 500 像素
-   - 參考 `STORE_LISTING.md` 中的設計指南
-   - 包含：遊戲標題、截圖、特色說明
-
-3. **截取遊戲截圖（1 小時）**
-   ```bash
-   # 啟動遊戲
-   npx expo start --android
-   
-   # 截取以下畫面：
-   # 1. 主戰鬥畫面（必須）
-   # 2. 裝備/背包畫面（必須）
-   # 3. 技能畫面（建議）
-   # 4. 轉生畫面（建議）
-   ```
-
-4. **完整測試（2-4 小時）**
-   - 從頭玩到至少第 2 區
-   - 測試所有核心功能
-   - 測試離線獎勵
-   - 測試轉生
-
-### 本週（建置與提交）
-
-5. **建置 AAB 檔案**
-   ```bash
-   # 安裝 EAS CLI
-   npm install -g eas-cli
-   
-   # 登入
-   eas login
-   
-   # 建置
-   eas build --platform android --profile production
-   ```
-
-6. **填寫 Google Play Console**
-   - 註冊帳號（$25 USD）
-   - 創建新應用程式
-   - 填寫商店資訊
-   - 上傳 AAB 檔案
-   - 提交審核
-
-### 下週（審核與發布）
-
-7. **等待 Google 審核**
-   - 通常 1-7 天
-   - 首次可能較長
-
-8. **發布成功！**
-   - 分享連結
-   - 收集反饋
-   - 準備第一次更新
+1. **建置 AAB**：`eas build --platform android --profile production`（詳見 `PUBLISH_NOW.md`）
+2. **填寫 Google Play Console**：商店資訊、隱私政策 URL、Feature Graphic、截圖、內容分級
+3. **上傳 AAB**：在 Console 建立版本並上傳 .aab
+4. **提交審核** → 等待 1–7 天 → **發布成功**
 
 ---
 

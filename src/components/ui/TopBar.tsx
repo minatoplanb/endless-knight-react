@@ -5,9 +5,11 @@ import { useGameStore } from '../../store/useGameStore';
 import { COLORS, SPACING, FONT_SIZES, LAYOUT, scale } from '../../constants/theme';
 import { formatNumber } from '../../utils/format';
 import { getAreaById } from '../../data/areas';
+import { useTranslation } from '../../locales';
 
 export const TopBar = React.memo(() => {
   const router = useRouter();
+  const { t, getDataName } = useTranslation();
   const stage = useGameStore((state) => state.stage);
   const gold = useGameStore((state) => state.gold);
   const areaProgress = useGameStore((state) => state.areaProgress);
@@ -15,7 +17,9 @@ export const TopBar = React.memo(() => {
   const setShowDailyReward = useGameStore((state) => state.setShowDailyRewardModal);
 
   const currentArea = getAreaById(stage.currentAreaId);
-  const areaName = currentArea?.name || '未知區域';
+  const areaName = currentArea
+    ? getDataName('area', currentArea.id, currentArea.name)
+    : t('common.unknownArea');
   const currentAreaProgress = areaProgress[stage.currentAreaId];
   const isAreaCleared = currentAreaProgress?.cleared || false;
   const dailyAvailable = canClaimDaily();
@@ -35,10 +39,10 @@ export const TopBar = React.memo(() => {
           {areaName}
         </Text>
         <View style={styles.stageRow}>
-          <Text style={styles.stageLabel}>第</Text>
+          <Text style={styles.stageLabel}>{t('common.stage')}</Text>
           <Text style={styles.stageNumber}>{stage.currentStage}</Text>
           <Text style={styles.stageLabel}>
-            /{currentArea?.stages || '?'}關
+            /{currentArea?.stages || '?'}{t('common.stageSuffix')}
             {isAreaCleared && ' ✓'}
           </Text>
         </View>

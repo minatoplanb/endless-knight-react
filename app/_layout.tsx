@@ -6,6 +6,7 @@ import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import { COLORS } from '../src/constants/theme';
 import { useGameStore } from '../src/store/useGameStore';
 import { GameEngine } from '../src/engine/GameEngine';
+import { LocaleProvider } from '../src/locales';
 import { BottomNav } from '../src/components/ui/BottomNav';
 import { LootModal } from '../src/components/modals/LootModal';
 import { AchievementModal } from '../src/components/modals/AchievementModal';
@@ -34,7 +35,7 @@ export default function RootLayout() {
   }, []);
 
   const content = (
-    <>
+    <LocaleProvider>
       <StatusBar style="light" backgroundColor={COLORS.bg} />
       <View style={styles.mainContent}>
         <Stack
@@ -49,7 +50,7 @@ export default function RootLayout() {
       <LootModal />
       <AchievementModal />
       <DailyRewardModal />
-    </>
+    </LocaleProvider>
   );
 
   if (Platform.OS === 'web') {

@@ -42,3 +42,12 @@ yarn-error.*
 
 # raw asset library (not for distribution)
 _raw-assets/
+
+# local reference only (do not push)
+docs/icon-mapping.md
+
+# Google Play submit (never commit)
+google-play-service-account.json
+
+# Firebase (config is in code, this file not needed)
+google-services.json

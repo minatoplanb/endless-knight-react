@@ -3,21 +3,22 @@ import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
 import { COLORS, SPACING, FONT_SIZES, scale, LAYOUT } from '../../constants/theme';
 import { useGameStore } from '../../store/useGameStore';
+import { useTranslation } from '../../locales';
 
 interface NavItem {
   route: string;
-  label: string;
+  labelKey: keyof import('../../locales/types').LocaleStrings['nav'];
   icon: string;
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { route: '/', label: '戰鬥', icon: '⚔️' },
-  { route: '/gathering', label: '採集', icon: '⛏️' },
-  { route: '/crafting', label: '製作', icon: '🔨' },
-  { route: '/equipment', label: '裝備', icon: '🛡️' },
-  { route: '/skills', label: '技能', icon: '✨' },
-  { route: '/quests', label: '任務', icon: '📋' },
-  { route: '/prestige', label: '轉生', icon: '🔄' },
+  { route: '/', labelKey: 'battle', icon: '⚔️' },
+  { route: '/gathering', labelKey: 'gathering', icon: '⛏️' },
+  { route: '/crafting', labelKey: 'crafting', icon: '🔨' },
+  { route: '/equipment', labelKey: 'equipment', icon: '🛡️' },
+  { route: '/skills', labelKey: 'skills', icon: '✨' },
+  { route: '/quests', labelKey: 'quests', icon: '📋' },
+  { route: '/prestige', labelKey: 'prestige', icon: '🔄' },
 ];
 
 const NavButton = React.memo(
@@ -27,7 +28,7 @@ const NavButton = React.memo(
     onPress,
     badge,
   }: {
-    item: NavItem;
+    item: NavItem & { label?: string };
     isActive: boolean;
     onPress: () => void;
     badge?: number;
@@ -55,7 +56,7 @@ const NavButton = React.memo(
             isActive && styles.navLabelActive,
           ]}
         >
-          {item.label}
+          {item.label ?? item.labelKey}
         </Text>
       </Pressable>
     );
@@ -65,6 +66,7 @@ const NavButton = React.memo(
 export const BottomNav = React.memo(() => {
   const router = useRouter();
   const pathname = usePathname();
+  const { t } = useTranslation();
   const quests = useGameStore((state) => state.quests);
 
   // Calculate unclaimed completed quests
@@ -95,7 +97,7 @@ export const BottomNav = React.memo(() => {
       {NAV_ITEMS.map((item) => (
         <NavButton
           key={item.route}
-          item={item}
+          item={{ ...item, label: t(`nav.${item.labelKey}`) }}
           isActive={pathname === item.route || (pathname === '' && item.route === '/')}
           onPress={() => handlePress(item.route)}
           badge={getBadge(item.route)}

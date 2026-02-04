@@ -476,6 +476,7 @@ Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 - [x] 平衡調整 (100 關卡/區域、Boss 強化、掉落率降低)
 
 ### ✅ 新增完成（v1.1.0+）
+- [x] 英文支援（i18n：zh/en、設定頁語言切換、t()/getDataName、主畫面/設定/死亡/戰鬥/升級已套用）
 - [x] 統計頁面 UI (`/stats`)
 - [x] 成就系統 (50+ 成就、獎勵)
 - [x] 每日獎勵 (7 天循環)
@@ -494,6 +495,7 @@ Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 - [x] 每日獎勵指示器 (TopBar)
 
 ### 🔲 待完成
+- [ ] 裝備頁：選中背包物品後自動捲動至說明區，或改為浮動說明面板（ItemDetail）
 - [ ] AdMob 廣告
 - [ ] IAP 內購
 - [ ] Google Play 上架

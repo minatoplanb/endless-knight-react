@@ -7,6 +7,7 @@ import { CharacterSprite } from './CharacterSprite';
 import { DamagePopupItem } from './DamagePopup';
 import { getAreaById, AreaEnemy } from '../../data/areas';
 import { COMBAT_STYLES, hasAdvantage, CombatStyle } from '../../data/combatStyles';
+import { useTranslation } from '../../locales';
 
 // Background images
 const BACKGROUNDS: { [key: string]: ImageSourcePropType } = {
@@ -137,6 +138,7 @@ const styleIndicatorStyles = StyleSheet.create({
 });
 
 export const BattleView = React.memo(() => {
+  const { t, getDataName } = useTranslation();
   const player = useGameStore((state) => state.player);
   const enemy = useGameStore((state) => state.currentEnemy);
   const damagePopups = useGameStore((state) => state.damagePopups);
@@ -200,7 +202,7 @@ export const BattleView = React.memo(() => {
         <View style={styles.travelingOverlay}>
           <View style={styles.travelingCard}>
             <Text style={styles.travelingEmoji}>🚶‍♂️</Text>
-            <Text style={styles.travelingLabel}>前往下一個敵人</Text>
+            <Text style={styles.travelingLabel}>{t('battle.traveling')}</Text>
             <View style={styles.travelingProgressOuter}>
               <View
                 style={[
@@ -217,7 +219,7 @@ export const BattleView = React.memo(() => {
       <View style={styles.battleArea}>
           {/* Player */}
           <View style={styles.characterContainer}>
-            <Text style={styles.characterLabel}>戰士</Text>
+            <Text style={styles.characterLabel}>{t('battle.warrior')}</Text>
             <CharacterSprite
               isPlayer={true}
               isHurt={playerHurt}
@@ -245,7 +247,7 @@ export const BattleView = React.memo(() => {
                   <Text style={styles.bossTitle}>{enemy.bossTitle}</Text>
                 )}
                 <Text style={[styles.characterLabel, isBoss && styles.bossLabel]}>
-                  {isBoss ? `👑 ${enemy.name}` : enemy.name}
+                  {isBoss ? `👑 ${getDataName('boss', enemy.id, enemy.name)}` : getDataName('enemy', enemy.id, enemy.name)}
                 </Text>
                 <CharacterSprite
                   isPlayer={false}

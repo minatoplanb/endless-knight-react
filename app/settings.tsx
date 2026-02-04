@@ -1,5 +1,5 @@
-import React, { useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Switch } from 'react-native';
+import React, { useCallback, useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Switch, ActivityIndicator } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS, SPACING, FONT_SIZES, scale } from '../src/constants/theme';
 import { TopBar } from '../src/components/ui/TopBar';
@@ -7,6 +7,8 @@ import { useGameStore } from '../src/store/useGameStore';
 import { SAVE_KEY } from '../src/constants/game';
 import { useRouter } from 'expo-router';
 import { CONSUMABLES, Consumable } from '../src/data/consumables';
+import { useTranslation } from '../src/locales';
+import { firebaseService } from '../src/services/firebase';
 
 interface SettingRowProps {
   icon: string;
@@ -38,6 +40,7 @@ const getHealingConsumables = (): Consumable[] => {
 
 export default function SettingsPage() {
   const router = useRouter();
+  const { t, locale, setLocale, getDataName } = useTranslation();
   const saveGame = useGameStore((state) => state.saveGame);
   const statistics = useGameStore((state) => state.statistics);
   const consumables = useGameStore((state) => state.consumables);
@@ -45,6 +48,62 @@ export default function SettingsPage() {
   const autoConsumeThreshold = useGameStore((state) => state.autoConsumeThreshold);
   const autoConsumeSlot = useGameStore((state) => state.autoConsumeSlot);
   const setAutoConsume = useGameStore((state) => state.setAutoConsume);
+
+  // Cloud sync state
+  const [isCloudSyncing, setIsCloudSyncing] = useState(false);
+  const [cloudSaveInfo, setCloudSaveInfo] = useState<{ exists: boolean; updatedAt?: Date } | null>(null);
+  const [isFirebaseReady, setIsFirebaseReady] = useState(false);
+
+  // Initialize Firebase and check status
+  useEffect(() => {
+    const initAndCheck = async () => {
+      await firebaseService.initialize();
+      if (firebaseService.isReady()) {
+        setIsFirebaseReady(true);
+        const info = await firebaseService.getCloudSaveInfo();
+        setCloudSaveInfo(info);
+      }
+    };
+    initAndCheck();
+  }, []);
+
+  const handleCloudSync = async () => {
+    if (!isFirebaseReady) {
+      Alert.alert(
+        locale === 'zh' ? '雲端服務未就緒' : 'Cloud Service Not Ready',
+        locale === 'zh' ? '請稍後再試' : 'Please try again later'
+      );
+      return;
+    }
+
+    setIsCloudSyncing(true);
+    try {
+      await saveGame();
+      const info = await firebaseService.getCloudSaveInfo();
+      setCloudSaveInfo(info);
+      Alert.alert(
+        locale === 'zh' ? '同步成功' : 'Sync Successful',
+        locale === 'zh' ? '遊戲進度已同步到雲端' : 'Game progress synced to cloud'
+      );
+    } catch (error) {
+      Alert.alert(
+        locale === 'zh' ? '同步失敗' : 'Sync Failed',
+        locale === 'zh' ? '無法同步到雲端，請稍後再試' : 'Could not sync to cloud, please try again'
+      );
+    } finally {
+      setIsCloudSyncing(false);
+    }
+  };
+
+  const formatCloudSaveTime = (): string => {
+    if (!cloudSaveInfo?.exists || !cloudSaveInfo.updatedAt) {
+      return locale === 'zh' ? '尚無雲端存檔' : 'No cloud save';
+    }
+    const date = cloudSaveInfo.updatedAt;
+    return locale === 'zh'
+      ? `上次同步: ${date.toLocaleDateString()} ${date.toLocaleTimeString()}`
+      : `Last sync: ${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+  };
 
   const handleAutoConsumeToggle = useCallback((value: boolean) => {
     setAutoConsume(value);
@@ -57,27 +116,28 @@ export default function SettingsPage() {
     );
 
     if (ownedItems.length === 0) {
-      Alert.alert('沒有回復道具', '你目前沒有任何回復道具。請先製作一些食物或藥水。');
+      Alert.alert(t('settings.noHealingItems'), t('settings.noHealingItemsDesc'));
       return;
     }
 
     const options = ownedItems.map((item) => {
       const stack = consumables.find((c) => c.consumableId === item.id);
+      const name = getDataName('consumable', item.id, item.name);
       return {
-        text: `${item.icon} ${item.name} (x${stack?.amount || 0})`,
+        text: `${item.icon} ${name} (x${stack?.amount || 0})`,
         onPress: () => setAutoConsume(autoConsumeEnabled, undefined, item.id),
       };
     });
 
     options.push({
-      text: '清除選擇',
+      text: t('settings.clearSelection'),
       onPress: () => setAutoConsume(autoConsumeEnabled, undefined, null),
     });
 
-    options.push({ text: '取消', onPress: () => {} });
+    options.push({ text: t('common.cancel'), onPress: () => {} });
 
-    Alert.alert('選擇自動使用的道具', '選擇要在 HP 低於閾值時自動使用的道具：', options);
-  }, [consumables, autoConsumeEnabled, setAutoConsume]);
+    Alert.alert(t('settings.selectConsumable'), t('settings.selectConsumableMessage'), options);
+  }, [consumables, autoConsumeEnabled, setAutoConsume, t, getDataName]);
 
   const handleSelectThreshold = useCallback(() => {
     const thresholds = [
@@ -88,47 +148,60 @@ export default function SettingsPage() {
       { text: '60%', value: 0.6 },
     ];
 
-    const options = thresholds.map((t) => ({
-      text: t.text,
-      onPress: () => setAutoConsume(autoConsumeEnabled, t.value),
+    const options = thresholds.map((th) => ({
+      text: th.text,
+      onPress: () => setAutoConsume(autoConsumeEnabled, th.value),
     }));
 
-    options.push({ text: '取消', onPress: () => {} });
+    options.push({ text: t('common.cancel'), onPress: () => {} });
 
-    Alert.alert('選擇 HP 閾值', '當 HP 低於此百分比時自動使用道具：', options);
-  }, [autoConsumeEnabled, setAutoConsume]);
+    Alert.alert(t('settings.selectThreshold'), t('settings.selectThresholdMessage'), options);
+  }, [autoConsumeEnabled, setAutoConsume, t]);
 
   const getSelectedConsumableName = (): string => {
-    if (!autoConsumeSlot) return '未選擇';
+    if (!autoConsumeSlot) return t('common.unselected');
     const consumable = CONSUMABLES[autoConsumeSlot];
-    if (!consumable) return '未選擇';
+    if (!consumable) return t('common.unselected');
     const stack = consumables.find((c) => c.consumableId === autoConsumeSlot);
-    return `${consumable.icon} ${consumable.name} (x${stack?.amount || 0})`;
+    const name = getDataName('consumable', consumable.id, consumable.name);
+    return `${consumable.icon} ${name} (x${stack?.amount || 0})`;
   };
 
   const handleManualSave = async () => {
     await saveGame();
-    Alert.alert('已儲存', '遊戲進度已手動儲存');
+    Alert.alert(t('settings.saved'), t('settings.savedDesc'));
   };
 
   const handleResetGame = () => {
     Alert.alert(
-      '重置遊戲',
-      '確定要重置所有遊戲進度嗎？此操作無法復原！',
+      t('settings.resetGame'),
+      t('settings.resetConfirm'),
       [
-        { text: '取消', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' as const },
         {
-          text: '重置',
-          style: 'destructive',
+          text: t('settings.resetButton'),
+          style: 'destructive' as const,
           onPress: async () => {
             try {
               await AsyncStorage.removeItem(SAVE_KEY);
-              Alert.alert('已重置', '請重新啟動遊戲以套用變更');
+              Alert.alert(t('settings.resetDone'), t('settings.resetDoneDesc'));
             } catch (error) {
               console.error('Failed to reset:', error);
             }
           },
         },
+      ]
+    );
+  };
+
+  const handleLanguagePress = () => {
+    Alert.alert(
+      t('settings.language'),
+      undefined,
+      [
+        { text: t('common.cancel'), style: 'cancel' as const },
+        { text: t('settings.languageZh'), onPress: () => setLocale('zh') },
+        { text: t('settings.languageEn'), onPress: () => setLocale('en') },
       ]
     );
   };
@@ -140,37 +213,81 @@ export default function SettingsPage() {
   const formatPlaytime = (ms: number): string => {
     const hours = Math.floor(ms / (1000 * 60 * 60));
     const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
-    return `${hours}時 ${minutes}分`;
+    return locale === 'zh' ? `${hours}時 ${minutes}分` : `${hours}h ${minutes}m`;
   };
 
   return (
     <View style={styles.container}>
       <TopBar />
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.pageTitle}>⚙️ 設定</Text>
+        <Text style={styles.pageTitle}>⚙️ {t('settings.title')}</Text>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>遊戲</Text>
+          <Text style={styles.sectionTitle}>{t('settings.language')}</Text>
+          <TouchableOpacity style={styles.settingRow} onPress={handleLanguagePress}>
+            <Text style={styles.settingIcon}>🌐</Text>
+            <View style={styles.settingInfo}>
+              <Text style={styles.settingTitle}>
+                {locale === 'zh' ? t('settings.languageZh') : t('settings.languageEn')}
+              </Text>
+              <Text style={styles.settingDesc}>{t('settings.languageDesc')}</Text>
+            </View>
+            <Text style={styles.arrow}>›</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>{t('settings.sectionGame')}</Text>
           <SettingRow
             icon="💾"
-            title="手動儲存"
-            description="立即儲存遊戲進度"
+            title={t('settings.manualSave')}
+            description={t('settings.manualSaveDesc')}
             onPress={handleManualSave}
           />
           <SettingRow
             icon="📊"
-            title="遊戲統計"
-            description={`總遊戲時間: ${formatPlaytime(statistics.totalPlayTimeMs)}`}
+            title={t('settings.statistics')}
+            description={`${t('settings.playtime')}: ${formatPlaytime(statistics.totalPlayTimeMs)}`}
             onPress={handleViewStats}
           />
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>自動消耗品</Text>
+          <Text style={styles.sectionTitle}>{locale === 'zh' ? '☁️ 雲端同步' : '☁️ Cloud Sync'}</Text>
+          <TouchableOpacity
+            style={[styles.settingRow, isCloudSyncing && styles.settingRowDisabled]}
+            onPress={handleCloudSync}
+            disabled={isCloudSyncing}
+          >
+            {isCloudSyncing ? (
+              <ActivityIndicator size="small" color={COLORS.textGold} style={styles.settingIcon} />
+            ) : (
+              <Text style={styles.settingIcon}>🔄</Text>
+            )}
+            <View style={styles.settingInfo}>
+              <Text style={styles.settingTitle}>
+                {locale === 'zh' ? '同步到雲端' : 'Sync to Cloud'}
+              </Text>
+              <Text style={styles.settingDesc}>{formatCloudSaveTime()}</Text>
+            </View>
+            <Text style={styles.arrow}>›</Text>
+          </TouchableOpacity>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>{locale === 'zh' ? '狀態' : 'Status'}</Text>
+            <Text style={[styles.infoValue, { color: isFirebaseReady ? COLORS.hpFull : COLORS.textDim }]}>
+              {isFirebaseReady
+                ? (locale === 'zh' ? '已連線' : 'Connected')
+                : (locale === 'zh' ? '未連線' : 'Not Connected')}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>{t('settings.sectionAutoConsume')}</Text>
           <View style={styles.switchRow}>
             <View style={styles.switchInfo}>
-              <Text style={styles.settingTitle}>啟用自動吃藥</Text>
-              <Text style={styles.settingDesc}>HP 低於閾值時自動使用回復道具</Text>
+              <Text style={styles.settingTitle}>{t('settings.enableAutoConsume')}</Text>
+              <Text style={styles.settingDesc}>{t('settings.autoConsumeDesc')}</Text>
             </View>
             <Switch
               value={autoConsumeEnabled}
@@ -186,8 +303,12 @@ export default function SettingsPage() {
           >
             <Text style={styles.settingIcon}>📉</Text>
             <View style={styles.settingInfo}>
-              <Text style={[styles.settingTitle, !autoConsumeEnabled && styles.settingTitleDisabled]}>HP 閾值</Text>
-              <Text style={styles.settingDesc}>低於 {Math.round(autoConsumeThreshold * 100)}% 時觸發</Text>
+              <Text style={[styles.settingTitle, !autoConsumeEnabled && styles.settingTitleDisabled]}>
+                {t('settings.hpThreshold')}
+              </Text>
+              <Text style={styles.settingDesc}>
+                {t('settings.triggerBelow').replace('{0}', String(Math.round(autoConsumeThreshold * 100)))}
+              </Text>
             </View>
             <Text style={styles.arrow}>›</Text>
           </TouchableOpacity>
@@ -198,7 +319,9 @@ export default function SettingsPage() {
           >
             <Text style={styles.settingIcon}>🍖</Text>
             <View style={styles.settingInfo}>
-              <Text style={[styles.settingTitle, !autoConsumeEnabled && styles.settingTitleDisabled]}>選擇道具</Text>
+              <Text style={[styles.settingTitle, !autoConsumeEnabled && styles.settingTitleDisabled]}>
+                {t('settings.selectItem')}
+              </Text>
               <Text style={styles.settingDesc}>{getSelectedConsumableName()}</Text>
             </View>
             <Text style={styles.arrow}>›</Text>
@@ -206,27 +329,27 @@ export default function SettingsPage() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>版本資訊</Text>
+          <Text style={styles.sectionTitle}>{t('settings.sectionVersion')}</Text>
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>遊戲版本</Text>
+            <Text style={styles.infoLabel}>{t('settings.gameVersion')}</Text>
             <Text style={styles.infoValue}>v1.2.0</Text>
           </View>
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>擊殺總數</Text>
+            <Text style={styles.infoLabel}>{t('settings.totalKills')}</Text>
             <Text style={styles.infoValue}>{statistics.totalEnemiesKilled.toLocaleString()}</Text>
           </View>
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>金幣總計</Text>
+            <Text style={styles.infoLabel}>{t('settings.totalGold')}</Text>
             <Text style={styles.infoValue}>{statistics.totalGoldEarned.toLocaleString()}</Text>
           </View>
         </View>
 
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, styles.dangerTitle]}>危險區域</Text>
+          <Text style={[styles.sectionTitle, styles.dangerTitle]}>{t('settings.sectionDanger')}</Text>
           <SettingRow
             icon="🗑️"
-            title="重置遊戲"
-            description="刪除所有進度並重新開始"
+            title={t('settings.resetGame')}
+            description={t('settings.resetDesc')}
             onPress={handleResetGame}
             danger
           />

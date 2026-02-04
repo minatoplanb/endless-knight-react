@@ -455,15 +455,15 @@ idle rpg, auto battler, incremental game, loot collection, prestige, offline rew
 
 **Website:** (可選，可以用 GitHub repo 或專門建一個)
 
-**Privacy Policy URL:** (需要上傳 PRIVACY_POLICY.md 到公開位置)
+**Privacy Policy URL:** https://minatoplanb.github.io/endless-knight-react/
 
 ---
 
 ## ✅ Pre-Submission Checklist
 
-- [ ] Privacy Policy uploaded and URL ready
-- [ ] Feature Graphic created (1024x500px)
-- [ ] At least 2 screenshots captured (1080x1920px)
+- [x] Privacy Policy uploaded and URL ready（GitHub Pages）
+- [x] Feature Graphic created (1024x500px)
+- [x] At least 2 screenshots captured (store-assets/screenshots/)
 - [ ] Short description finalized (< 80 chars)
 - [ ] Full description finalized (< 4000 chars)
 - [ ] App icon verified (512x512px)

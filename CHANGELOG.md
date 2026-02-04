@@ -8,6 +8,42 @@
 
 ## [Unreleased]
 
+### 新增
+- **Firebase 整合（Firebase Integration）**
+  - 匿名登入（Anonymous Authentication）
+  - 雲端存檔（Cloud Firestore）
+  - Analytics 分析追蹤
+  - 設定頁面新增「雲端同步」功能
+  - 本地存檔保持為主要存儲，雲端為備份
+  - 新增 `src/services/firebase.ts` 服務模組
+  - 新增 `src/hooks/useFirebase.ts` React Hook
+  - 新增 `FIREBASE_SETUP.md` 設定指南
+
+### 修復
+- **敵人防禦計算修復（Enemy Defense Fix）**
+  - 修正敵人防禦計算，現在正確使用敵人的 `def` 屬性
+  - 之前錯誤地使用 `enemy.atk * 0.1` 作為防禦值
+  - 影響：敵人難度更符合設計預期
+
+- **區域效率系統實現（Area Efficiency System）**
+  - 實現 CLAUDE.md 中定義的區域效率公式
+  - 公式：`有效攻擊力 = 基礎攻擊 × (玩家等級 / (玩家等級 + 區域要求))`
+  - 玩家等級 = 所有升級次數總和（HP + ATK + DEF + 速度 + 暴擊）
+  - 影響：高等級區域現在需要更多升級才能有效率地戰鬥
+
+- **掉落邏輯修復（Loot Drop Fix）**
+  - 修正 `killEnemy()` 中的參數錯誤
+  - 之前 `isStageComplete` 被錯誤當作 `isBoss` 參數傳入
+  - 影響：普通敵人的掉落機率恢復正常（1% + 0.02% per stage）
+
+### 新增
+- **英文支援（English support / i18n）**
+  - 新增 `src/locales`：`zh.ts`、`en.ts`、`index.ts`、`types.ts`
+  - 語言選項儲存於 AsyncStorage（`@endless_knight_locale`），設定頁可切換 繁體中文 / English
+  - UI 字串改為 `t(key)`；資料名稱（區域、敵人、Boss、技能、成就等）英文用 `getDataName(type, id, fallback)`
+  - 已套用：底部導航、TopBar、設定頁、死亡彈窗、戰鬥畫面、升級面板與按鈕
+  - 其餘畫面與資料 key 可依需求陸續補上
+
 ### 修復
 - **回退圖示系統重構（Revert Icon System Refactoring）**
   - 移除 `src/constants/icons.ts` 集中式圖示管理系統

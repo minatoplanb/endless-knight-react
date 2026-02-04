@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { COLORS, SPACING, FONT_SIZES, scale, LAYOUT } from '../../constants/theme';
 import { formatNumber } from '../../utils/format';
 import { UpgradeType } from '../../types';
+import { useTranslation } from '../../locales';
 
 interface UpgradeButtonProps {
   type: UpgradeType;
@@ -13,18 +14,19 @@ interface UpgradeButtonProps {
   isRecommended?: boolean;
 }
 
-const UPGRADE_INFO: Record<UpgradeType, { label: string; icon: string; description: string }> = {
-  hp: { label: 'HP', icon: '❤️', description: '+15 生命' },
-  atk: { label: 'ATK', icon: '⚔️', description: '+5 攻擊' },
-  def: { label: 'DEF', icon: '🛡️', description: '+3 防禦' },
-  speed: { label: 'SPD', icon: '⚡', description: '+5% 攻速' },
-  crit: { label: 'CRIT', icon: '💥', description: '+0.5% 暴擊' },
+const UPGRADE_KEYS: Record<UpgradeType, { labelKey: string; descKey: string; icon: string }> = {
+  hp: { labelKey: 'battle.upgradeHp', descKey: 'battle.hpDesc', icon: '❤️' },
+  atk: { labelKey: 'battle.upgradeAtk', descKey: 'battle.atkDesc', icon: '⚔️' },
+  def: { labelKey: 'battle.upgradeDef', descKey: 'battle.defDesc', icon: '🛡️' },
+  speed: { labelKey: 'battle.upgradeSpeed', descKey: 'battle.speedDesc', icon: '⚡' },
+  crit: { labelKey: 'battle.upgradeCrit', descKey: 'battle.critDesc', icon: '💥' },
 };
 
 export const UpgradeButton = React.memo<UpgradeButtonProps>(
   ({ type, level, cost, currentGold, onPress, isRecommended }) => {
+    const { t } = useTranslation();
     const canAfford = currentGold >= cost;
-    const info = UPGRADE_INFO[type];
+    const info = UPGRADE_KEYS[type];
 
     const handlePress = useCallback(() => {
       if (canAfford) {
@@ -48,15 +50,15 @@ export const UpgradeButton = React.memo<UpgradeButtonProps>(
 
         <View style={styles.infoContainer}>
           <View style={styles.headerRow}>
-            <Text style={styles.label}>{info.label}</Text>
-            <Text style={styles.level}>Lv.{level}</Text>
+            <Text style={styles.label}>{t(info.labelKey)}</Text>
+            <Text style={styles.level}>{t('common.lv')}{level}</Text>
             {isRecommended && (
               <View style={styles.recommendedBadge}>
-                <Text style={styles.recommendedText}>推薦</Text>
+                <Text style={styles.recommendedText}>{t('battle.recommended')}</Text>
               </View>
             )}
           </View>
-          <Text style={styles.description}>{info.description}</Text>
+          <Text style={styles.description}>{t(info.descKey)}</Text>
         </View>
 
         <View style={styles.costContainer}>

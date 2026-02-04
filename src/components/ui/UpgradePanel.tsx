@@ -4,6 +4,7 @@ import { useGameStore } from '../../store/useGameStore';
 import { COLORS, SPACING, FONT_SIZES, scale } from '../../constants/theme';
 import { UpgradeButton } from './UpgradeButton';
 import { UpgradeType } from '../../types';
+import { useTranslation } from '../../locales';
 
 const UPGRADE_TYPES: UpgradeType[] = ['hp', 'atk', 'def', 'speed', 'crit'];
 
@@ -41,6 +42,7 @@ const getRecommendedUpgrade = (
 };
 
 export const UpgradePanel = React.memo(() => {
+  const { t } = useTranslation();
   const gold = useGameStore((state) => state.gold);
   const upgrades = useGameStore((state) => state.upgrades);
   const player = useGameStore((state) => state.player);
@@ -59,7 +61,7 @@ export const UpgradePanel = React.memo(() => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>升級</Text>
+      <Text style={styles.title}>{t('battle.upgrade')}</Text>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}

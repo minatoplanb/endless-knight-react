@@ -80,6 +80,8 @@ import {
   SAVE_KEY,
 } from '../constants/game';
 import { LootSystem } from '../engine/LootSystem';
+import { CombatSystem } from '../engine/CombatSystem';
+import { firebaseService } from '../services/firebase';
 import {
   BACKPACK_BASE_CAPACITY,
   BACKPACK_CAPACITY_PER_LEVEL,
@@ -494,11 +496,23 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const atkBuff = get().getBuffMultiplier('atk');
     const buffedAtk = Math.floor(state.player.atk * atkBuff);
 
+    // Calculate area efficiency based on player level vs area requirement
+    const currentArea = getAreaById(state.stage.currentAreaId);
+    const playerLevel = state.upgrades.hp + state.upgrades.atk + state.upgrades.def +
+                        state.upgrades.speed + state.upgrades.crit;
+    const areaEfficiency = CombatSystem.calculateAreaEfficiency(
+      playerLevel,
+      currentArea?.requiredLevel || 0
+    );
+
+    // Apply area efficiency to attack, then subtract enemy defense
+    const effectiveAtk = Math.floor(buffedAtk * areaEfficiency);
+    let baseDamage = Math.max(1, effectiveAtk - state.currentEnemy.def);
+
     // Apply crit buff from skills
     const skillCritBuff = get().getSkillBuffMultiplier('crit');
     const effectiveCritChance = state.player.critChance * skillCritBuff;
     const isCrit = Math.random() < effectiveCritChance;
-    let baseDamage = Math.max(1, buffedAtk - Math.floor(state.currentEnemy.atk * 0.1));
 
     // Apply combat style multiplier
     const styleMultiplier = getCombatMultiplier(state.combatStyle, state.currentEnemy.combatStyle);
@@ -632,8 +646,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (isActualBoss) {
       // Boss guaranteed drop with higher rarity
       loot = LootSystem.generateDrop(state.stage.currentStage, true);
-    } else if (LootSystem.shouldDropLoot(state.stage.currentStage, isStageComplete)) {
-      loot = LootSystem.generateDrop(state.stage.currentStage, isStageComplete);
+    } else if (LootSystem.shouldDropLoot(state.stage.currentStage, false)) {
+      // Regular enemies use normal drop chance (not boss drop chance)
+      loot = LootSystem.generateDrop(state.stage.currentStage, false);
     }
 
     // Auto-collect loot
@@ -2272,8 +2287,16 @@ export const useGameStore = create<GameStore>((set, get) => ({
     };
 
     try {
+      // Save to local storage (primary)
       await AsyncStorage.setItem(SAVE_KEY, JSON.stringify(saveData));
       set({ lastSaveTime: Date.now(), lastOnlineTime: Date.now() });
+
+      // Save to cloud (secondary, non-blocking)
+      if (firebaseService.isSignedIn()) {
+        firebaseService.saveToCloud(saveData).catch((error) => {
+          console.warn('Cloud save failed (non-blocking):', error);
+        });
+      }
     } catch (error) {
       console.error('Failed to save game:', error);
     }

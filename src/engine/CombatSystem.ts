@@ -8,10 +8,18 @@ export interface DamageResult {
 }
 
 export const CombatSystem = {
-  calculatePlayerDamage: (player: PlayerStats, enemy: Enemy): DamageResult => {
+  // Calculate area efficiency based on player level vs area requirement
+  // Returns a value between 0 and 1 (higher = more efficient)
+  calculateAreaEfficiency: (playerLevel: number, areaRequiredLevel: number): number => {
+    if (areaRequiredLevel === 0) return 1.0; // Starting area has no penalty
+    return playerLevel / (playerLevel + areaRequiredLevel);
+  },
+
+  calculatePlayerDamage: (player: PlayerStats, enemy: Enemy, areaEfficiency: number = 1.0): DamageResult => {
     const isCrit = Math.random() < player.critChance;
-    const enemyDef = Math.floor(enemy.atk * 0.1); // Enemies have 10% of atk as def
-    let damage = Math.max(1, player.atk - enemyDef);
+    // Apply area efficiency to attack, then subtract enemy defense
+    const effectiveAtk = Math.floor(player.atk * areaEfficiency);
+    let damage = Math.max(1, effectiveAtk - enemy.def);
 
     if (isCrit) {
       damage = Math.floor(damage * player.critMultiplier);

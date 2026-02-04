@@ -1,4 +1,4 @@
-import { Dimensions, Platform } from 'react-native';
+import { Dimensions, Platform, ImageStyle } from 'react-native';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
@@ -75,4 +75,28 @@ export const LAYOUT = {
   bottomNavHeight: scale(60),
   progressBarHeight: scale(30),
   minTouchSize: 48,
+};
+
+// Pixel-art icons: avoid smooth scaling so 16x16 icons stay sharp when scaled up.
+// Web: CSS imageRendering. Native: use emoji so icons stay sharp like nav bar.
+export const PIXEL_ART_IMAGE_STYLE: ImageStyle =
+  Platform.OS === 'web'
+    ? ({ imageRendering: 'pixelated' } as ImageStyle)
+    : {};
+
+// Emoji fallback for equipment icons on native (sharp like nav bar; no blur).
+// Picked for clarity, consistency, and fantasy-RPG feel.
+export const EQUIPMENT_EMOJI: Record<string, string> = {
+  sword_basic: '⚔️',
+  sword_iron: '🗡️',
+  axe: '🪓',
+  bow: '🏹',
+  staff: '🪄',
+  helmet: '🪖',
+  armor: '🥋',
+  shield: '🛡️',
+  ring: '💍',
+  amulet: '📿',
+  gloves: '🧤',
+  boots: '👢',
 };

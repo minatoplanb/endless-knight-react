@@ -1,6 +1,6 @@
 import React, { useCallback } from 'react';
-import { View, Text, StyleSheet, Pressable, Image } from 'react-native';
-import { COLORS, SPACING, FONT_SIZES, scale } from '../../constants/theme';
+import { View, Text, StyleSheet, Pressable, Image, Platform } from 'react-native';
+import { COLORS, SPACING, FONT_SIZES, scale, PIXEL_ART_IMAGE_STYLE, EQUIPMENT_EMOJI } from '../../constants/theme';
 import { Equipment, EquipmentSlotType, Rarity } from '../../types';
 import { SLOT_NAMES } from '../../data/equipment';
 
@@ -54,7 +54,11 @@ export const EquipmentSlot = React.memo(
         onPress={handlePress}
       >
         {iconSource ? (
-          <Image source={iconSource} style={styles.icon} resizeMode="contain" />
+          Platform.OS === 'web' ? (
+            <Image source={iconSource} style={[styles.icon, PIXEL_ART_IMAGE_STYLE]} resizeMode="contain" />
+          ) : (
+            <Text style={styles.iconEmoji}>{EQUIPMENT_EMOJI[item!.icon] ?? '❓'}</Text>
+          )
         ) : (
           <View style={styles.emptySlot}>
             <Text style={styles.emptyText}>{SLOT_NAMES[slot]}</Text>
@@ -99,6 +103,9 @@ const styles = StyleSheet.create({
   icon: {
     width: scale(48),
     height: scale(48),
+  },
+  iconEmoji: {
+    fontSize: scale(28),
   },
   emptySlot: {
     justifyContent: 'center',

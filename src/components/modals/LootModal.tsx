@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, Image, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Animated, Image, TouchableOpacity, Platform } from 'react-native';
 import { useGameStore } from '../../store/useGameStore';
-import { COLORS, SPACING, FONT_SIZES, scale } from '../../constants/theme';
+import { COLORS, SPACING, FONT_SIZES, scale, PIXEL_ART_IMAGE_STYLE, EQUIPMENT_EMOJI } from '../../constants/theme';
 import { RARITY_NAMES, SLOT_NAMES } from '../../data/equipment';
 import { Rarity, Equipment } from '../../types';
 
@@ -135,7 +135,11 @@ export const LootModal = React.memo(() => {
           </View>
           <View style={styles.content}>
             {iconSource && (
-              <Image source={iconSource} style={styles.icon} resizeMode="contain" />
+              Platform.OS === 'web' ? (
+                <Image source={iconSource} style={[styles.icon, PIXEL_ART_IMAGE_STYLE]} resizeMode="contain" />
+              ) : (
+                <Text style={styles.iconEmoji}>{EQUIPMENT_EMOJI[pendingLoot.icon] ?? '❓'}</Text>
+              )
             )}
             <View style={styles.info}>
               <Text style={[styles.itemName, { color: rarityColor }]}>
@@ -201,6 +205,10 @@ const styles = StyleSheet.create({
   icon: {
     width: scale(40),
     height: scale(40),
+    marginRight: SPACING.md,
+  },
+  iconEmoji: {
+    fontSize: scale(24),
     marginRight: SPACING.md,
   },
   info: {

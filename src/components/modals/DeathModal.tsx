@@ -2,8 +2,10 @@ import React from 'react';
 import { View, Text, StyleSheet, Modal, Pressable } from 'react-native';
 import { useGameStore } from '../../store/useGameStore';
 import { COLORS, SPACING, FONT_SIZES, scale } from '../../constants/theme';
+import { useTranslation } from '../../locales';
 
 export const DeathModal = React.memo(() => {
+  const { t } = useTranslation();
   const showDeathModal = useGameStore((state) => state.showDeathModal);
   const stage = useGameStore((state) => state.stage);
   const resetAfterDeath = useGameStore((state) => state.resetAfterDeath);
@@ -19,14 +21,14 @@ export const DeathModal = React.memo(() => {
     >
       <View style={styles.overlay}>
         <View style={styles.modal}>
-          <Text style={styles.title}>💀 你死了！</Text>
+          <Text style={styles.title}>💀 {t('modals.death.title')}</Text>
 
           <Text style={styles.message}>
-            你在關卡 {stage.currentStage} 被擊敗了
+            {t('modals.death.message').replace('{0}', String(stage.currentStage))}
           </Text>
 
           <Text style={styles.info}>
-            將返回關卡 {resetStage}
+            {t('modals.death.info').replace('{0}', String(resetStage))}
           </Text>
 
           <Pressable
@@ -36,7 +38,7 @@ export const DeathModal = React.memo(() => {
             ]}
             onPress={resetAfterDeath}
           >
-            <Text style={styles.buttonText}>復活</Text>
+            <Text style={styles.buttonText}>{t('modals.death.revive')}</Text>
           </Pressable>
         </View>
       </View>

@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, Image } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Image, Platform } from 'react-native';
 import { useGameStore } from '../../store/useGameStore';
-import { COLORS, SPACING, FONT_SIZES, scale } from '../../constants/theme';
+import { COLORS, SPACING, FONT_SIZES, scale, PIXEL_ART_IMAGE_STYLE, EQUIPMENT_EMOJI } from '../../constants/theme';
 import { Equipment, Rarity } from '../../types';
 import { ItemDetail } from './ItemDetail';
 import { getSellPrice } from '../../data/equipment';
@@ -57,7 +57,11 @@ const InventoryItem = React.memo(
         onPress={handlePress}
       >
         {iconSource && (
-          <Image source={iconSource} style={styles.itemIcon} resizeMode="contain" />
+          Platform.OS === 'web' ? (
+            <Image source={iconSource} style={[styles.itemIcon, PIXEL_ART_IMAGE_STYLE]} resizeMode="contain" />
+          ) : (
+            <Text style={styles.itemIconEmoji}>{EQUIPMENT_EMOJI[item.icon] ?? '❓'}</Text>
+          )
         )}
         <Text style={[styles.levelBadge, { backgroundColor: rarityColor }]}>
           {item.level}
@@ -228,6 +232,9 @@ const styles = StyleSheet.create({
   itemIcon: {
     width: scale(40),
     height: scale(40),
+  },
+  itemIconEmoji: {
+    fontSize: scale(24),
   },
   levelBadge: {
     position: 'absolute',
