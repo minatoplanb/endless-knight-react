@@ -55,8 +55,8 @@ export default function SettingsPage() {
   const [cloudSaveInfo, setCloudSaveInfo] = useState<{ exists: boolean; updatedAt?: Date } | null>(null);
   const [isFirebaseReady, setIsFirebaseReady] = useState(false);
 
-  // Google Sign-In
-  const { signIn: googleSignIn, signOut: googleSignOut, isLoading: isGoogleLoading, user, isAnonymous } = useGoogleSignIn();
+  // Google Sign-In (only available on web)
+  const { signIn: googleSignIn, signOut: googleSignOut, isLoading: isGoogleLoading, user, isAnonymous, isAvailable: isGoogleAvailable } = useGoogleSignIn();
 
   // Initialize Firebase and check status
   useEffect(() => {
@@ -309,37 +309,41 @@ export default function SettingsPage() {
               </Text>
               <Text style={styles.settingDesc}>
                 {isAnonymous
-                  ? (locale === 'zh' ? '登入 Google 以跨設備同步' : 'Sign in with Google to sync across devices')
+                  ? (isGoogleAvailable
+                      ? (locale === 'zh' ? '登入 Google 以跨設備同步' : 'Sign in with Google to sync across devices')
+                      : (locale === 'zh' ? '雲端存檔已啟用（匿名）' : 'Cloud save enabled (anonymous)'))
                   : (locale === 'zh' ? '已連結 Google 帳戶' : 'Google account linked')}
               </Text>
             </View>
           </View>
 
-          {/* Google Sign In / Sign Out Button */}
-          <TouchableOpacity
-            style={[styles.settingRow, isGoogleLoading && styles.settingRowDisabled]}
-            onPress={isAnonymous ? handleGoogleSignIn : handleSignOut}
-            disabled={isGoogleLoading}
-          >
-            {isGoogleLoading ? (
-              <ActivityIndicator size="small" color={COLORS.textGold} style={styles.settingIcon} />
-            ) : (
-              <Text style={styles.settingIcon}>{isAnonymous ? '🔑' : '🚪'}</Text>
-            )}
-            <View style={styles.settingInfo}>
-              <Text style={[styles.settingTitle, !isAnonymous && styles.settingTitleDanger]}>
-                {isAnonymous
-                  ? (locale === 'zh' ? '使用 Google 登入' : 'Sign in with Google')
-                  : (locale === 'zh' ? '登出' : 'Sign Out')}
-              </Text>
-              <Text style={styles.settingDesc}>
-                {isAnonymous
-                  ? (locale === 'zh' ? '跨設備同步遊戲進度' : 'Sync game progress across devices')
-                  : (locale === 'zh' ? '切換回訪客帳戶' : 'Switch back to guest account')}
-              </Text>
-            </View>
-            <Text style={styles.arrow}>›</Text>
-          </TouchableOpacity>
+          {/* Google Sign In / Sign Out Button - Only show on web */}
+          {isGoogleAvailable && (
+            <TouchableOpacity
+              style={[styles.settingRow, isGoogleLoading && styles.settingRowDisabled]}
+              onPress={isAnonymous ? handleGoogleSignIn : handleSignOut}
+              disabled={isGoogleLoading}
+            >
+              {isGoogleLoading ? (
+                <ActivityIndicator size="small" color={COLORS.textGold} style={styles.settingIcon} />
+              ) : (
+                <Text style={styles.settingIcon}>{isAnonymous ? '🔑' : '🚪'}</Text>
+              )}
+              <View style={styles.settingInfo}>
+                <Text style={[styles.settingTitle, !isAnonymous && styles.settingTitleDanger]}>
+                  {isAnonymous
+                    ? (locale === 'zh' ? '使用 Google 登入' : 'Sign in with Google')
+                    : (locale === 'zh' ? '登出' : 'Sign Out')}
+                </Text>
+                <Text style={styles.settingDesc}>
+                  {isAnonymous
+                    ? (locale === 'zh' ? '跨設備同步遊戲進度' : 'Sync game progress across devices')
+                    : (locale === 'zh' ? '切換回訪客帳戶' : 'Switch back to guest account')}
+                </Text>
+              </View>
+              <Text style={styles.arrow}>›</Text>
+            </TouchableOpacity>
+          )}
 
           {/* Sync Button */}
           <TouchableOpacity
