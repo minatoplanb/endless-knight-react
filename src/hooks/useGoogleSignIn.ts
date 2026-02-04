@@ -1,13 +1,17 @@
-// Hook for Google Sign-In - Web only
-// On Android/iOS, Google Sign-In is disabled (requires native configuration)
+// Hook for Google Sign-In - Web and Android supported
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { Platform } from 'react-native';
 import { firebaseService } from '../services/firebase';
 import { User } from 'firebase/auth';
 
-// Google Sign-In is only available on web for now
-// Android requires SHA-1 fingerprint and androidClientId configuration
-export const isGoogleSignInAvailable = Platform.OS === 'web';
+// Google OAuth Client IDs
+const GOOGLE_CLIENT_IDS = {
+  web: '1038383583773-8a6ocsqvc6mshp1aut93pknert3u3010.apps.googleusercontent.com',
+  android: '1038383583773-61idf6cqhisi94irvht0i9tq4bpdccis.apps.googleusercontent.com',
+};
+
+// Google Sign-In is available on web and Android
+export const isGoogleSignInAvailable = Platform.OS === 'web' || Platform.OS === 'android';
 
 interface UseGoogleSignInReturn {
   signIn: () => Promise<void>;
@@ -26,16 +30,16 @@ export function useGoogleSignIn(): UseGoogleSignInReturn {
   const [isAnonymous, setIsAnonymous] = useState(true);
   const [isReady, setIsReady] = useState(false);
 
-  // Store auth modules in ref (only loaded on web)
+  // Store auth modules in ref
   const authModules = useRef<{
     Google: typeof import('expo-auth-session/providers/google') | null;
     WebBrowser: typeof import('expo-web-browser') | null;
-  }>({ Google: null, WebBrowser: null });
+    AuthSession: typeof import('expo-auth-session') | null;
+  }>({ Google: null, WebBrowser: null, AuthSession: null });
 
-  // Load Google Auth modules only on web
+  // Load Google Auth modules
   useEffect(() => {
-    if (Platform.OS !== 'web') {
-      // On non-web platforms, mark as ready but with no Google auth
+    if (!isGoogleSignInAvailable) {
       setIsReady(true);
       return;
     }
@@ -44,20 +48,21 @@ export function useGoogleSignIn(): UseGoogleSignInReturn {
 
     const loadModules = async () => {
       try {
-        const [Google, WebBrowser] = await Promise.all([
+        const [Google, WebBrowser, AuthSession] = await Promise.all([
           import('expo-auth-session/providers/google'),
           import('expo-web-browser'),
+          import('expo-auth-session'),
         ]);
 
         if (mounted) {
-          authModules.current = { Google, WebBrowser };
+          authModules.current = { Google, WebBrowser, AuthSession };
           WebBrowser.maybeCompleteAuthSession();
           setIsReady(true);
         }
       } catch (err) {
         console.warn('Failed to load Google Auth modules:', err);
         if (mounted) {
-          setIsReady(true); // Still mark ready, but Google auth won't work
+          setIsReady(true);
         }
       }
     };
@@ -79,14 +84,13 @@ export function useGoogleSignIn(): UseGoogleSignInReturn {
   }, []);
 
   const signIn = useCallback(async () => {
-    // Check platform
-    if (Platform.OS !== 'web') {
-      setError('Google Sign-In is only available on web version');
+    if (!isGoogleSignInAvailable) {
+      setError('Google Sign-In is not available on this platform');
       return;
     }
 
-    const { Google, WebBrowser } = authModules.current;
-    if (!Google || !WebBrowser) {
+    const { Google, WebBrowser, AuthSession } = authModules.current;
+    if (!Google || !WebBrowser || !AuthSession) {
       setError('Google Auth not loaded');
       return;
     }
@@ -95,38 +99,87 @@ export function useGoogleSignIn(): UseGoogleSignInReturn {
     setIsLoading(true);
 
     try {
-      const webClientId = '1038383583773-8a6ocsqvc6mshp1aut93pknert3u3010.apps.googleusercontent.com';
-      // On web, use window.location.origin as redirect URI
-      const redirectUri = typeof window !== 'undefined' ? window.location.origin : 'https://endlessknight.pages.dev';
+      if (Platform.OS === 'android') {
+        // Android: Use expo-auth-session with Android client ID
+        const redirectUri = AuthSession.makeRedirectUri({
+          scheme: 'endless-knight',
+        });
 
-      const authUrl =
-        `https://accounts.google.com/o/oauth2/v2/auth?` +
-        `client_id=${webClientId}` +
-        `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-        `&response_type=token%20id_token` +
-        `&scope=openid%20profile%20email` +
-        `&nonce=${Math.random().toString(36).substring(2, 15)}`;
+        const authUrl =
+          `https://accounts.google.com/o/oauth2/v2/auth?` +
+          `client_id=${GOOGLE_CLIENT_IDS.android}` +
+          `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+          `&response_type=id_token` +
+          `&scope=openid%20profile%20email` +
+          `&nonce=${Math.random().toString(36).substring(2, 15)}`;
 
-      const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
+        const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
 
-      if (result.type === 'success' && result.url) {
-        // Extract id_token from URL fragment
-        const fragment = result.url.split('#')[1] || '';
-        const params = new URLSearchParams(fragment);
-        const idToken = params.get('id_token');
+        if (result.type === 'success' && result.url) {
+          // Extract id_token from URL fragment or query
+          let idToken: string | null = null;
 
-        if (idToken) {
-          const firebaseUser = await firebaseService.signInWithGoogle(idToken);
-          if (!firebaseUser) {
-            setError('Failed to sign in with Google');
+          // Try fragment first (implicit flow)
+          const fragment = result.url.split('#')[1];
+          if (fragment) {
+            const params = new URLSearchParams(fragment);
+            idToken = params.get('id_token');
           }
+
+          // Try query params if no fragment
+          if (!idToken) {
+            const query = result.url.split('?')[1]?.split('#')[0];
+            if (query) {
+              const params = new URLSearchParams(query);
+              idToken = params.get('id_token');
+            }
+          }
+
+          if (idToken) {
+            const firebaseUser = await firebaseService.signInWithGoogle(idToken);
+            if (!firebaseUser) {
+              setError('Failed to sign in with Google');
+            }
+          } else {
+            setError('No ID token received');
+          }
+        } else if (result.type === 'cancel') {
+          // User cancelled, no error
         } else {
-          setError('No ID token received');
+          setError('Google sign in failed');
         }
-      } else if (result.type === 'cancel') {
-        // User cancelled, no error
       } else {
-        setError('Google sign in failed');
+        // Web: Use web client ID with window.location.origin
+        const redirectUri = typeof window !== 'undefined' ? window.location.origin : 'https://endlessknight.pages.dev';
+
+        const authUrl =
+          `https://accounts.google.com/o/oauth2/v2/auth?` +
+          `client_id=${GOOGLE_CLIENT_IDS.web}` +
+          `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+          `&response_type=token%20id_token` +
+          `&scope=openid%20profile%20email` +
+          `&nonce=${Math.random().toString(36).substring(2, 15)}`;
+
+        const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
+
+        if (result.type === 'success' && result.url) {
+          const fragment = result.url.split('#')[1] || '';
+          const params = new URLSearchParams(fragment);
+          const idToken = params.get('id_token');
+
+          if (idToken) {
+            const firebaseUser = await firebaseService.signInWithGoogle(idToken);
+            if (!firebaseUser) {
+              setError('Failed to sign in with Google');
+            }
+          } else {
+            setError('No ID token received');
+          }
+        } else if (result.type === 'cancel') {
+          // User cancelled
+        } else {
+          setError('Google sign in failed');
+        }
       }
     } catch (err) {
       console.error('Google sign in error:', err);
