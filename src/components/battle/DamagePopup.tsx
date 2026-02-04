@@ -6,14 +6,20 @@ interface DamagePopupProps {
   value: number;
   isCrit: boolean;
   isPlayerDamage: boolean;
+  isAdvantage?: boolean;
   onComplete: () => void;
 }
 
+// Color for advantage damage (green-ish to indicate effectiveness)
+const ADVANTAGE_COLOR = '#22c55e';
+
 export const DamagePopupItem = React.memo<DamagePopupProps>(
-  ({ value, isCrit, isPlayerDamage, onComplete }) => {
+  ({ value, isCrit, isPlayerDamage, isAdvantage = false, onComplete }) => {
     const translateY = useRef(new Animated.Value(0)).current;
     const opacity = useRef(new Animated.Value(1)).current;
-    const scale = useRef(new Animated.Value(isCrit ? 2.0 : 1)).current;
+    // Scale up more for advantage attacks
+    const initialScale = isCrit ? 2.0 : isAdvantage ? 1.3 : 1;
+    const scale = useRef(new Animated.Value(initialScale)).current;
     // Shake effect for crits - horizontal oscillation
     const translateX = useRef(new Animated.Value(0)).current;
 
@@ -72,7 +78,14 @@ export const DamagePopupItem = React.memo<DamagePopupProps>(
       Animated.parallel(animations).start(onComplete);
     }, []);
 
-    const textColor = isPlayerDamage ? COLORS.damage : isCrit ? COLORS.crit : COLORS.text;
+    // Determine text color: player damage (red), crit (gold), advantage (green), normal (white)
+    const textColor = isPlayerDamage
+      ? COLORS.damage
+      : isCrit
+        ? COLORS.crit
+        : isAdvantage
+          ? ADVANTAGE_COLOR
+          : COLORS.text;
 
     return (
       <Animated.View
@@ -87,6 +100,10 @@ export const DamagePopupItem = React.memo<DamagePopupProps>(
         {/* CRIT label above damage number */}
         {isCrit && !isPlayerDamage && (
           <Text style={styles.critLabel}>CRIT!</Text>
+        )}
+        {/* Advantage label (only if not crit, to avoid clutter) */}
+        {isAdvantage && !isCrit && !isPlayerDamage && (
+          <Text style={styles.advantageLabel}>⬆️ 2x</Text>
         )}
         <Text
           style={[
@@ -115,6 +132,15 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZES.sm,
     fontWeight: 'bold',
     color: '#ffd700',
+    textShadowColor: 'rgba(0,0,0,0.9)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+    marginBottom: 2,
+  },
+  advantageLabel: {
+    fontSize: FONT_SIZES.xs,
+    fontWeight: 'bold',
+    color: ADVANTAGE_COLOR,
     textShadowColor: 'rgba(0,0,0,0.9)',
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,

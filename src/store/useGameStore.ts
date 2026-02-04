@@ -38,6 +38,7 @@ import {
 import {
   getCombatMultiplier,
   getDefenseMultiplier,
+  hasAdvantage,
 } from '../data/combatStyles';
 import {
   getRecipeById,
@@ -559,6 +560,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     // Apply combat style multiplier
     const styleMultiplier = getCombatMultiplier(state.combatStyle, state.currentEnemy.combatStyle);
+    const isStyleAdvantage = hasAdvantage(state.combatStyle, state.currentEnemy.combatStyle);
     let damage = Math.floor(baseDamage * styleMultiplier);
 
     if (isCrit) {
@@ -579,6 +581,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       value: damage,
       isCrit,
       isPlayerDamage: false,
+      isAdvantage: isStyleAdvantage,
     });
 
     // Apply life_steal affix

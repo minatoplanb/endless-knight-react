@@ -288,6 +288,7 @@ export const BattleView = React.memo(() => {
               value={popup.value}
               isCrit={popup.isCrit}
               isPlayerDamage={popup.isPlayerDamage}
+              isAdvantage={popup.isAdvantage}
               onComplete={() => removeDamagePopup(popup.id)}
             />
           </View>

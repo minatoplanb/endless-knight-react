@@ -222,6 +222,7 @@ export interface DamagePopup {
   value: number;
   isCrit: boolean;
   isPlayerDamage: boolean;
+  isAdvantage?: boolean; // Combat style advantage damage
   timestamp: number;
 }
 
