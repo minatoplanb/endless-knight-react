@@ -1749,6 +1749,45 @@ export const useGameStore = create<GameStore>((set, get) => ({
     };
   },
 
+  // Auto-equip best items from inventory for each slot
+  autoEquipBest: () => {
+    const state = get();
+    const slots: EquipmentSlotType[] = ['weapon', 'helmet', 'armor', 'shield', 'ring', 'amulet'];
+    let equippedCount = 0;
+
+    for (const slot of slots) {
+      const currentEquipped = state.equipment[slot];
+      const inventoryItems = get().inventory.filter(item => item.slot === slot);
+
+      if (inventoryItems.length === 0) continue;
+
+      // Find best item using LootSystem.isUpgrade
+      let bestItem: Equipment | null = null;
+      for (const item of inventoryItems) {
+        if (!bestItem) {
+          if (!currentEquipped || LootSystem.isUpgrade(currentEquipped, item)) {
+            bestItem = item;
+          }
+        } else if (LootSystem.isUpgrade(bestItem, item)) {
+          bestItem = item;
+        }
+      }
+
+      // Equip best item if it's better than current
+      if (bestItem && (!currentEquipped || LootSystem.isUpgrade(currentEquipped, bestItem))) {
+        get().equipItem(bestItem);
+        equippedCount++;
+      }
+    }
+
+    return {
+      equippedCount,
+      message: equippedCount > 0
+        ? `已裝備 ${equippedCount} 件更好的裝備`
+        : '沒有更好的裝備可換',
+    };
+  },
+
   getEquipmentBonus: (): EquipmentStats => {
     const state = get();
     const bonus: EquipmentStats = {

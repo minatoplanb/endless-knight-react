@@ -118,6 +118,7 @@ const CraftButton: React.FC<{
       onPressOut={handlePressOut}
       onPress={handlePress}
       disabled={!canAfford}
+      style={styles.craftButtonContainer}
     >
       {(state) => {
         const hovered = Platform.OS === 'web' && (state as any).hovered;
@@ -150,14 +151,50 @@ const PART_ICONS: Record<string, string> = {
 const RecipeCard: React.FC<{
   recipe: Recipe;
   canAfford: boolean;
-  onCraft: () => void;
+  onCraft: (quantity: number) => void;
 }> = ({ recipe, canAfford, onCraft }) => {
+  const [quantity, setQuantity] = useState(1);
   const resources = useGameStore((state) => state.gathering.resources);
   const gold = useGameStore((state) => state.gold);
   const monsterParts = useGameStore((state) => state.monsterParts);
 
+  // Calculate max craftable quantity
+  const maxQuantity = React.useMemo(() => {
+    let max = 99;
+    for (const [resource, amount] of Object.entries(recipe.costs)) {
+      const available = resources[resource as keyof typeof resources] || 0;
+      max = Math.min(max, Math.floor(available / amount));
+    }
+    if (recipe.goldCost) {
+      max = Math.min(max, Math.floor(gold / recipe.goldCost));
+    }
+    if (recipe.partCosts) {
+      for (const [part, amount] of Object.entries(recipe.partCosts)) {
+        const available = monsterParts[part as keyof typeof monsterParts] || 0;
+        max = Math.min(max, Math.floor(available / amount));
+      }
+    }
+    return Math.max(0, max);
+  }, [recipe, resources, gold, monsterParts]);
+
+  // Only show quantity controls for consumables
+  const showQuantity = recipe.itemType === 'consumable' && maxQuantity > 1;
+
+  const handleQuantityChange = useCallback((delta: number) => {
+    setQuantity(prev => Math.max(1, Math.min(maxQuantity, prev + delta)));
+  }, [maxQuantity]);
+
+  const handleCraft = useCallback(() => {
+    onCraft(quantity);
+    setQuantity(1); // Reset after craft
+  }, [onCraft, quantity]);
+
   return (
-    <View style={[styles.recipeCard, !canAfford && styles.recipeCardDisabled]}>
+    <View style={[
+      styles.recipeCard,
+      !canAfford && styles.recipeCardDisabled,
+      canAfford && styles.recipeCardCraftable,
+    ]}>
       <View style={styles.recipeHeader}>
         <Text style={styles.recipeIcon}>{recipe.icon}</Text>
         <View style={styles.recipeInfo}>
@@ -169,38 +206,65 @@ const RecipeCard: React.FC<{
 
       <View style={styles.recipeCosts}>
         {Object.entries(recipe.costs).map(([resource, amount]) => {
-          const hasEnough = resources[resource as keyof typeof resources] >= amount;
+          const totalCost = amount * quantity;
+          const hasEnough = resources[resource as keyof typeof resources] >= totalCost;
           return (
             <View key={resource} style={styles.costItem}>
               <Text style={[styles.costText, !hasEnough && styles.costTextInsufficient]}>
                 {resource === 'ore' ? '🪨' :
                  resource === 'wood' ? '🪵' :
                  resource === 'fish' ? '🐟' : '🌿'}
-                {' '}{amount}
+                {' '}{totalCost}
               </Text>
             </View>
           );
         })}
         {recipe.goldCost && (
           <View style={styles.costItem}>
-            <Text style={[styles.costText, gold < recipe.goldCost && styles.costTextInsufficient]}>
-              💰 {formatNumber(recipe.goldCost)}
+            <Text style={[styles.costText, gold < recipe.goldCost * quantity && styles.costTextInsufficient]}>
+              💰 {formatNumber(recipe.goldCost * quantity)}
             </Text>
           </View>
         )}
         {recipe.partCosts && Object.entries(recipe.partCosts).map(([part, amount]) => {
-          const hasEnough = (monsterParts[part as keyof typeof monsterParts] || 0) >= amount;
+          const totalCost = amount * quantity;
+          const hasEnough = (monsterParts[part as keyof typeof monsterParts] || 0) >= totalCost;
           return (
             <View key={part} style={styles.costItem}>
               <Text style={[styles.costText, !hasEnough && styles.costTextInsufficient]}>
-                {PART_ICONS[part] || '❓'} {amount}
+                {PART_ICONS[part] || '❓'} {totalCost}
               </Text>
             </View>
           );
         })}
       </View>
 
-      <CraftButton canAfford={canAfford} onPress={onCraft} />
+      <View style={styles.craftRow}>
+        {showQuantity && (
+          <View style={styles.quantityControls}>
+            <Pressable
+              onPress={() => handleQuantityChange(-1)}
+              style={[styles.quantityButton, quantity <= 1 && styles.quantityButtonDisabled]}
+            >
+              <Text style={styles.quantityButtonText}>−</Text>
+            </Pressable>
+            <Text style={styles.quantityText}>{quantity}</Text>
+            <Pressable
+              onPress={() => handleQuantityChange(1)}
+              style={[styles.quantityButton, quantity >= maxQuantity && styles.quantityButtonDisabled]}
+            >
+              <Text style={styles.quantityButtonText}>+</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => setQuantity(maxQuantity)}
+              style={[styles.maxButton, maxQuantity === 0 && styles.quantityButtonDisabled]}
+            >
+              <Text style={styles.maxButtonText}>MAX</Text>
+            </Pressable>
+          </View>
+        )}
+        <CraftButton canAfford={canAfford && quantity <= maxQuantity} onPress={handleCraft} />
+      </View>
     </View>
   );
 };
@@ -253,12 +317,18 @@ export default function CraftingScreen() {
 
   const recipes = getRecipesByCategory(selectedCategory);
 
-  const handleCraft = (recipeId: string) => {
-    const success = craftItem(recipeId);
-    if (success) {
-      // Could add a success animation/toast here
+  const handleCraft = useCallback((recipeId: string, quantity: number = 1) => {
+    let successCount = 0;
+    for (let i = 0; i < quantity; i++) {
+      const success = craftItem(recipeId);
+      if (success) {
+        successCount++;
+      } else {
+        break; // Stop if we can't craft anymore
+      }
     }
-  };
+    // Could add a success animation/toast here
+  }, [craftItem]);
 
   return (
     <View style={styles.container}>
@@ -292,7 +362,7 @@ export default function CraftingScreen() {
             key={recipe.id}
             recipe={recipe}
             canAfford={canAffordRecipe(recipe, resources, gold, monsterParts)}
-            onCraft={() => handleCraft(recipe.id)}
+            onCraft={(quantity) => handleCraft(recipe.id, quantity)}
           />
         ))}
         {recipes.length === 0 && (
@@ -391,6 +461,10 @@ const styles = StyleSheet.create({
   recipeCardDisabled: {
     opacity: 0.6,
   },
+  recipeCardCraftable: {
+    borderWidth: 2,
+    borderColor: '#22c55e',
+  },
   recipeHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -436,6 +510,9 @@ const styles = StyleSheet.create({
   costTextInsufficient: {
     color: '#ef4444',
   },
+  craftButtonContainer: {
+    flex: 1,
+  },
   craftButton: {
     backgroundColor: COLORS.buttonSuccess,
     paddingVertical: 10,
@@ -462,6 +539,54 @@ const styles = StyleSheet.create({
   craftButtonText: {
     color: COLORS.text,
     fontSize: 14,
+    fontWeight: 'bold',
+  },
+  craftRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  quantityControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.bgLight,
+    borderRadius: 6,
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+  },
+  quantityButton: {
+    width: 28,
+    height: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.buttonPrimary,
+    borderRadius: 4,
+  },
+  quantityButtonDisabled: {
+    opacity: 0.4,
+  },
+  quantityButtonText: {
+    color: COLORS.text,
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  quantityText: {
+    color: COLORS.text,
+    fontSize: 16,
+    fontWeight: 'bold',
+    minWidth: 32,
+    textAlign: 'center',
+  },
+  maxButton: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    backgroundColor: COLORS.textGold,
+    borderRadius: 4,
+    marginLeft: 4,
+  },
+  maxButtonText: {
+    color: COLORS.bg,
+    fontSize: 10,
     fontWeight: 'bold',
   },
   emptyState: {

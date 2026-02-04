@@ -11,8 +11,10 @@ const SLOT_ORDER: EquipmentSlotType[] = ['helmet', 'amulet', 'weapon', 'armor', 
 
 export const EquipmentPanel = React.memo(() => {
   const equipment = useGameStore((state) => state.equipment);
+  const inventory = useGameStore((state) => state.inventory);
   const unequipItem = useGameStore((state) => state.unequipItem);
   const enhanceAllEquipped = useGameStore((state) => state.enhanceAllEquipped);
+  const autoEquipBest = useGameStore((state) => state.autoEquipBest);
   const [selectedSlot, setSelectedSlot] = useState<EquipmentSlotType | null>(null);
   const [selectedItem, setSelectedItem] = useState<Equipment | null>(null);
 
@@ -62,16 +64,35 @@ export const EquipmentPanel = React.memo(() => {
     );
   }, [equipment, enhanceAllEquipped]);
 
+  const handleAutoEquip = useCallback(() => {
+    if (inventory.length === 0) {
+      Alert.alert('背包空空', '背包裡沒有裝備');
+      return;
+    }
+
+    const result = autoEquipBest();
+    Alert.alert('自動裝備', result.message);
+  }, [inventory, autoEquipBest]);
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>裝備</Text>
-        <PressableButton
-          onPress={handleEnhanceAll}
-          title="⬆️ 強化全部"
-          variant="primary"
-          size="small"
-        />
+        <View style={styles.headerButtons}>
+          <PressableButton
+            onPress={handleAutoEquip}
+            title="🎯 最佳裝備"
+            variant="success"
+            size="small"
+            style={styles.headerButton}
+          />
+          <PressableButton
+            onPress={handleEnhanceAll}
+            title="⬆️ 強化全部"
+            variant="primary"
+            size="small"
+          />
+        </View>
       </View>
       <View style={styles.slotsGrid}>
         {/* Top row: helmet, amulet */}
@@ -146,6 +167,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: SPACING.md,
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    gap: SPACING.xs,
+  },
+  headerButton: {
+    marginRight: SPACING.xs,
   },
   title: {
     fontSize: FONT_SIZES.lg,
