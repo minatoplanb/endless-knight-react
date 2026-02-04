@@ -1,11 +1,14 @@
 import React, { useCallback } from 'react';
-import { View, Text, StyleSheet, Modal, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Modal } from 'react-native';
 import { useGameStore } from '../../store/useGameStore';
 import { COLORS, SPACING, FONT_SIZES, scale } from '../../constants/theme';
 import { formatNumber, formatTime } from '../../utils/format';
 import { RESOURCES, ALL_RESOURCES } from '../../data/resources';
+import { PressableButton } from '../common/PressableButton';
+import { useTranslation } from '../../locales';
 
 export const OfflineModal = React.memo(() => {
+  const { locale } = useTranslation();
   const showOfflineModal = useGameStore((state) => state.showOfflineModal);
   const offlineReward = useGameStore((state) => state.offlineReward);
   const offlineGathering = useGameStore((state) => state.offlineGathering);
@@ -13,6 +16,8 @@ export const OfflineModal = React.memo(() => {
   const setShowOfflineModal = useGameStore((state) => state.setShowOfflineModal);
   const gold = useGameStore((state) => state.gold);
   const collectOfflineGathering = useGameStore((state) => state.collectOfflineGathering);
+
+  const isZh = locale === 'zh';
 
   const offlineSeconds = (Date.now() - lastOnlineTime) / 1000;
 
@@ -31,14 +36,16 @@ export const OfflineModal = React.memo(() => {
     >
       <View style={styles.overlay}>
         <View style={styles.modal}>
-          <Text style={styles.title}>歡迎回來！</Text>
+          <Text style={styles.title}>{isZh ? '歡迎回來！' : 'Welcome Back!'}</Text>
 
           <Text style={styles.message}>
-            你離線了 {formatTime(offlineSeconds)}
+            {isZh
+              ? `你離線了 ${formatTime(offlineSeconds)}`
+              : `You were offline for ${formatTime(offlineSeconds)}`}
           </Text>
 
           <View style={styles.rewardContainer}>
-            <Text style={styles.rewardLabel}>離線獎勵</Text>
+            <Text style={styles.rewardLabel}>{isZh ? '離線獎勵' : 'Offline Rewards'}</Text>
             <Text style={styles.rewardAmount}>
               {formatNumber(offlineReward)} G
             </Text>
@@ -59,15 +66,13 @@ export const OfflineModal = React.memo(() => {
             )}
           </View>
 
-          <Pressable
-            style={({ pressed }) => [
-              styles.button,
-              pressed && styles.buttonPressed,
-            ]}
+          <PressableButton
+            title={isZh ? '領取' : 'Collect'}
             onPress={handleCollect}
-          >
-            <Text style={styles.buttonText}>領取</Text>
-          </Pressable>
+            variant="success"
+            size="large"
+            style={styles.button}
+          />
         </View>
       </View>
     </Modal>
@@ -122,20 +127,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   button: {
-    backgroundColor: COLORS.buttonSuccess,
-    paddingVertical: SPACING.md,
-    paddingHorizontal: SPACING.xxl,
-    borderRadius: scale(8),
     minWidth: scale(150),
-  },
-  buttonPressed: {
-    opacity: 0.8,
-  },
-  buttonText: {
-    fontSize: FONT_SIZES.lg,
-    color: COLORS.text,
-    fontWeight: 'bold',
-    textAlign: 'center',
   },
   gatheringRewards: {
     marginTop: SPACING.md,
